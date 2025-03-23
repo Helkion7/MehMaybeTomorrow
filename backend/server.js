@@ -6,6 +6,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const authRoutes = require("./routes/authRoutes");
+const todoRoutes = require("./routes/todoRoutes");
 
 // Initialize Express app
 const app = express();
@@ -44,6 +45,7 @@ app.use(cookieParser());
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/todos", todoRoutes);
 
 app.get("/", (req, res) => {
   res.send(`Server running on port ${process.env.PORT}`);
