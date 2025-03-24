@@ -18,6 +18,13 @@ const TodoSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    tags: [
+      {
+        type: String,
+        trim: true,
+        maxlength: [20, "Tag cannot be more than 20 characters"],
+      },
+    ],
     user: {
       type: Schema.Types.ObjectId,
       ref: "User",

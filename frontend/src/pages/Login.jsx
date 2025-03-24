@@ -8,11 +8,13 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
     e.preventDefault();
+    setIsLoading(true);
 
     try {
       const response = await axios.post(
@@ -21,15 +23,13 @@ const Login = () => {
         { withCredentials: true, timeout: 5000 }
       );
 
-      console.log(response.data, "RESPONSE DATA");
-      setMsg(response.data.msg);
-
-      if (response.data.success) {
-        setTimeout(() => navigate("/todo"));
-      }
+      setMsg(response.data.message || "Login successful");
+      navigate("/todo");
     } catch (error) {
       console.error("Login failed", error.response?.data || error.message);
-      setMsg(error.response?.data?.msg || "Login failed");
+      setMsg(error.response?.data?.message || "Login failed");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -38,7 +38,6 @@ const Login = () => {
       <h2>Login</h2>
       <form onSubmit={handleSubmit}>
         <div>
-          <Mail size={20} />
           <input
             type="email"
             placeholder="Email"
@@ -47,7 +46,6 @@ const Login = () => {
           />
         </div>
         <div>
-          <Lock size={20} />
           <input
             type={showPassword ? "text" : "password"}
             placeholder="Password"
@@ -55,10 +53,12 @@ const Login = () => {
             onChange={(e) => setPassword(e.target.value)}
           />
           <button type="button" onClick={() => setShowPassword(!showPassword)}>
-            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            {showPassword ? "Hide" : "Show"}
           </button>
         </div>
-        <button type="submit">Login</button>
+        <button type="submit" disabled={isLoading}>
+          {isLoading ? "Logging in..." : "Login"}
+        </button>
       </form>
       {msg && <p>{msg}</p>}
       <p>

@@ -10,6 +10,7 @@ router.use(verifyJWT);
 router.post("/", todoController.createTodo);
 router.get("/", todoController.getTodos);
 router.get("/today", todoController.getTodayTodos);
+router.get("/tags", todoController.getTags); // This route should be working
 router.put("/:id", todoController.updateTodo);
 router.delete("/:id", todoController.deleteTodo);
 

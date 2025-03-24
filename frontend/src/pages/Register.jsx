@@ -25,8 +25,7 @@ const Register = () => {
       console.log(response.data, "RESPONSE DATA");
       setMsg(response.data.message || "Registration successful");
 
-      // Redirect to login page after successful registration
-      setTimeout(() => navigate("/login"), 1500);
+      setTimeout(() => navigate("/login"));
     } catch (error) {
       console.error("Register failed", error.response?.data || error.message);
       setMsg(error.response?.data?.message || "Registration failed");
@@ -38,7 +37,6 @@ const Register = () => {
       <h2>Register</h2>
       <form onSubmit={handleSubmit}>
         <div>
-          <User size={20} />
           <input
             type="text"
             placeholder="Username"
@@ -47,7 +45,6 @@ const Register = () => {
           />
         </div>
         <div>
-          <Mail size={20} />
           <input
             type="email"
             placeholder="Email"
@@ -56,7 +53,6 @@ const Register = () => {
           />
         </div>
         <div>
-          <Lock size={20} />
           <input
             type={showPassword ? "text" : "password"}
             placeholder="Password"
@@ -64,14 +60,14 @@ const Register = () => {
             onChange={(e) => setPassword(e.target.value)}
           />
           <button type="button" onClick={() => setShowPassword(!showPassword)}>
-            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            {showPassword ? "Hide" : "Show"}
           </button>
         </div>
         <button type="submit">Register</button>
       </form>
       {msg && <p>{msg}</p>}
       <p>
-        Already have an account? <a href="/login">Login</a>
+        Already have an account? <a href="/">Login</a>
       </p>
     </div>
   );

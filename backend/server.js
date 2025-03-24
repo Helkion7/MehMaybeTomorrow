@@ -7,6 +7,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const authRoutes = require("./routes/authRoutes");
 const todoRoutes = require("./routes/todoRoutes");
+const userRoutes = require("./routes/userRoutes");
 
 // Initialize Express app
 const app = express();
@@ -45,7 +46,33 @@ app.use(cookieParser());
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/todos", todoRoutes);
+app.use("/api/todos", todoRoutes); // This should mount the /tags endpoint
+app.use("/api/users", userRoutes);
+
+// Debug route to check available routes
+app.get("/routes", (req, res) => {
+  const routes = [];
+  app._router.stack.forEach((middleware) => {
+    if (middleware.route) {
+      // Routes registered directly on the app
+      routes.push({
+        path: middleware.route.path,
+        methods: Object.keys(middleware.route.methods),
+      });
+    } else if (middleware.name === "router") {
+      // Router middleware
+      middleware.handle.stack.forEach((handler) => {
+        if (handler.route) {
+          routes.push({
+            path: handler.route.path,
+            methods: Object.keys(handler.route.methods),
+          });
+        }
+      });
+    }
+  });
+  res.json(routes);
+});
 
 app.get("/", (req, res) => {
   res.send(`Server running on port ${process.env.PORT}`);

@@ -3,12 +3,13 @@ const Todo = require("../models/Todo");
 // Create a new todo
 const createTodo = async (req, res) => {
   try {
-    const { title, description } = req.body;
+    const { title, description, tags } = req.body;
 
     // Create new todo associated with the logged-in user
     const newTodo = await Todo.create({
       title,
       description,
+      tags,
       user: req.user.userId,
     });
 
@@ -28,10 +29,11 @@ const createTodo = async (req, res) => {
 // Get all todos for current user (filtered by date if provided)
 const getTodos = async (req, res) => {
   try {
-    const { date } = req.query;
+    const { date, tag } = req.query;
 
     // Build date filters
-    let dateFilter = {};
+    let filters = { user: req.user.userId };
+
     if (date) {
       // Create date range for the specific day
       const startDate = new Date(date);
@@ -40,19 +42,19 @@ const getTodos = async (req, res) => {
       const endDate = new Date(date);
       endDate.setHours(23, 59, 59, 999);
 
-      dateFilter = {
-        createdAt: {
-          $gte: startDate,
-          $lte: endDate,
-        },
+      filters.createdAt = {
+        $gte: startDate,
+        $lte: endDate,
       };
     }
 
-    // Get todos for the logged-in user with date filter if provided
-    const todos = await Todo.find({
-      user: req.user.userId,
-      ...dateFilter,
-    }).sort({ createdAt: -1 });
+    // Add tag filter if provided
+    if (tag) {
+      filters.tags = tag;
+    }
+
+    // Get todos for the logged-in user with filters
+    const todos = await Todo.find(filters).sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -78,14 +80,22 @@ const getTodayTodos = async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Get todos created today for this user
-    const todos = await Todo.find({
+    // Build filter
+    const filter = {
       user: req.user.userId,
       createdAt: {
         $gte: today,
         $lt: tomorrow,
       },
-    }).sort({ createdAt: -1 });
+    };
+
+    // Add tag filter if provided
+    if (req.query.tag) {
+      filter.tags = req.query.tag;
+    }
+
+    // Get todos created today for this user
+    const todos = await Todo.find(filter).sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -105,7 +115,7 @@ const getTodayTodos = async (req, res) => {
 const updateTodo = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, completed } = req.body;
+    const { title, description, completed, tags } = req.body;
 
     // Find todo and check ownership
     const todo = await Todo.findById(id);
@@ -128,7 +138,7 @@ const updateTodo = async (req, res) => {
     // Update todo
     const updatedTodo = await Todo.findByIdAndUpdate(
       id,
-      { title, description, completed },
+      { title, description, completed, tags },
       { new: true, runValidators: true }
     );
 
@@ -141,6 +151,35 @@ const updateTodo = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while updating todo",
+    });
+  }
+};
+
+// Get all unique tags
+const getTags = async (req, res) => {
+  try {
+    // Find all todos for this user and extract the unique tags
+    const todos = await Todo.find({ user: req.user.userId });
+    const tagsSet = new Set();
+
+    todos.forEach((todo) => {
+      if (todo.tags && todo.tags.length > 0) {
+        todo.tags.forEach((tag) => tagsSet.add(tag));
+      }
+    });
+
+    const uniqueTags = Array.from(tagsSet);
+
+    res.status(200).json({
+      success: true,
+      count: uniqueTags.length,
+      data: uniqueTags,
+    });
+  } catch (error) {
+    console.error("Get tags error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching tags",
     });
   }
 };
@@ -190,4 +229,5 @@ module.exports = {
   getTodayTodos,
   updateTodo,
   deleteTodo,
+  getTags,
 };
