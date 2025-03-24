@@ -9,7 +9,7 @@ const createToken = (user) => {
       userId: user._id,
       username: user.username,
     },
-    process.env.JWT_SECRET,
+    process.env.SECRET_KEY,
     { expiresIn: "1d" } // Token expires in 1 day
   );
 };
