@@ -1,8 +1,17 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { Trash2, Edit, Check, X, Tag, Plus } from "lucide-react";
+import { Trash2, Edit, Check, X, Tag, Plus, GripVertical } from "lucide-react";
 
-const TodoItem = ({ todo, onUpdateTodo, onDeleteTodo, availableTags = [] }) => {
+const TodoItem = ({
+  todo,
+  onUpdateTodo,
+  onDeleteTodo,
+  availableTags = [],
+  index,
+  onDragStart,
+  onDragOver,
+  onDrop,
+}) => {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(todo.title);
   const [description, setDescription] = useState(todo.description || "");
@@ -85,8 +94,27 @@ const TodoItem = ({ todo, onUpdateTodo, onDeleteTodo, availableTags = [] }) => {
     return date.toLocaleDateString() + " " + date.toLocaleTimeString();
   };
 
+  const handleDragStart = (e) => {
+    onDragStart(e, index);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    onDragOver(e, index);
+  };
+
+  const handleDrop = (e) => {
+    onDrop(e, index);
+  };
+
   return (
-    <div>
+    <div
+      draggable={!isEditing}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      className="flex flex-col border rounded shadow-sm mb-4 cursor-grab active:cursor-grabbing"
+    >
       {isEditing ? (
         <form onSubmit={handleUpdate}>
           <div>
@@ -174,35 +202,56 @@ const TodoItem = ({ todo, onUpdateTodo, onDeleteTodo, availableTags = [] }) => {
           </div>
         </form>
       ) : (
-        <div>
-          <div>
+        <div className="flex flex-col p-4">
+          <div className="flex items-center gap-2">
+            <div className="cursor-grab flex items-center">
+              <GripVertical size={20} />
+            </div>
             <input
               type="checkbox"
               checked={completed}
               onChange={handleToggleComplete}
+              className="mr-2"
             />
-            <h3>{todo.title}</h3>
+            <h3
+              className={`text-lg font-medium ${
+                completed ? "line-through opacity-70" : ""
+              }`}
+            >
+              {todo.title}
+            </h3>
           </div>
 
-          {todo.description && <p>{todo.description}</p>}
+          {todo.description && <p className="mt-2">{todo.description}</p>}
 
           {todo.tags && todo.tags.length > 0 && (
-            <div>
+            <div className="flex flex-wrap mt-2 gap-1">
               {todo.tags.map((tag) => (
-                <span key={tag}>{tag}</span>
+                <span
+                  key={tag}
+                  className="text-xs border rounded-full px-2 py-1"
+                >
+                  {tag}
+                </span>
               ))}
             </div>
           )}
 
-          <div>
+          <div className="text-xs mt-2 text-gray-500">
             <small>Created: {formatDate(todo.createdAt)}</small>
           </div>
 
-          <div>
-            <button onClick={() => setIsEditing(true)}>
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={() => setIsEditing(true)}
+              className="flex items-center gap-1 text-sm border rounded px-2 py-1"
+            >
               <Edit size={16} /> Edit
             </button>
-            <button onClick={handleDelete}>
+            <button
+              onClick={handleDelete}
+              className="flex items-center gap-1 text-sm border rounded px-2 py-1"
+            >
               <Trash2 size={16} /> Delete
             </button>
           </div>

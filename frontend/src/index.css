@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+/* Add custom drag styles */
+[draggable] {
+  user-select: none;
+}
+
+.dragging {
+  opacity: 0.5;
+}
