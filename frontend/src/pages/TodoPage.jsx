@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { PlusCircle, Filter, Tag, X } from "lucide-react";
+import { PlusCircle, Filter, Tag, X, Search } from "lucide-react";
 import TodoItem from "../components/TodoItem";
 import CreateTodo from "../components/CreateTodo";
 
@@ -11,6 +11,7 @@ const TodoPage = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTag, setSelectedTag] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [draggedItemIndex, setDraggedItemIndex] = useState(null);
   const navigate = useNavigate();
@@ -155,10 +156,94 @@ const TodoPage = () => {
     setDraggedItemIndex(null);
   };
 
+  // Calculate search ranking score for a todo
+  const getSearchScore = (todo, term) => {
+    const searchTermLower = term.toLowerCase();
+    let score = 0;
+
+    // Check title matches (highest weight)
+    if (todo.title.toLowerCase().includes(searchTermLower)) {
+      score += 10;
+      // Exact title match gets higher score
+      if (todo.title.toLowerCase() === searchTermLower) {
+        score += 5;
+      }
+      // Title starts with search term gets higher score
+      if (todo.title.toLowerCase().startsWith(searchTermLower)) {
+        score += 3;
+      }
+    }
+
+    // Check description matches
+    if (
+      todo.description &&
+      todo.description.toLowerCase().includes(searchTermLower)
+    ) {
+      score += 5;
+    }
+
+    // Check tag matches
+    if (todo.tags) {
+      for (const tag of todo.tags) {
+        if (tag.toLowerCase().includes(searchTermLower)) {
+          score += 8;
+          // Exact tag match gets higher score
+          if (tag.toLowerCase() === searchTermLower) {
+            score += 4;
+          }
+        }
+      }
+    }
+
+    return score;
+  };
+
+  // Filter and sort todos based on search term
+  const filteredTodos =
+    searchTerm.trim() === ""
+      ? todos
+      : todos
+          .filter((todo) => {
+            const searchTermLower = searchTerm.toLowerCase();
+            return (
+              todo.title.toLowerCase().includes(searchTermLower) ||
+              (todo.description &&
+                todo.description.toLowerCase().includes(searchTermLower)) ||
+              (todo.tags &&
+                todo.tags.some((tag) =>
+                  tag.toLowerCase().includes(searchTermLower)
+                ))
+            );
+          })
+          .sort((a, b) => {
+            // Sort by search relevance score
+            const scoreA = getSearchScore(a, searchTerm);
+            const scoreB = getSearchScore(b, searchTerm);
+            return scoreB - scoreA;
+          });
+
   return (
     <div className="p-4">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Your Todos</h1>
+      </div>
+
+      {/* Search bar */}
+      <div className="mb-4">
+        <div className="flex items-center">
+          <Search size={20} />
+          <input
+            type="text"
+            placeholder="Search todos by title, description or tags"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm("")}>
+              <X size={16} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mb-6">
@@ -226,9 +311,9 @@ const TodoPage = () => {
         <div className="text-center py-8">
           <p>Loading todos...</p>
         </div>
-      ) : todos.length > 0 ? (
+      ) : filteredTodos.length > 0 ? (
         <div className="space-y-2">
-          {todos.map((todo, index) => (
+          {filteredTodos.map((todo, index) => (
             <TodoItem
               key={todo._id}
               todo={todo}
@@ -244,8 +329,12 @@ const TodoPage = () => {
         </div>
       ) : (
         <div className="text-center py-8">
-          <p>No todos found. Create one!</p>
-          {!showCreateForm && (
+          {searchTerm ? (
+            <p>No todos matching your search. Try a different term.</p>
+          ) : (
+            <p>No todos found. Create one!</p>
+          )}
+          {!showCreateForm && !searchTerm && (
             <button
               onClick={() => setShowCreateForm(true)}
               className="flex items-center gap-1 border rounded px-3 py-2 mt-4"
