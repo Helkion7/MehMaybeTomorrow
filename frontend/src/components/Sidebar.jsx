@@ -21,34 +21,48 @@ const Sidebar = () => {
   };
 
   const isActive = (path) => {
-    return location.pathname === path
-      ? "bg-blue-100 text-blue-600"
-      : "text-gray-700 hover:bg-gray-100";
+    return location.pathname === path ? "border-accent" : "border-transparent";
   };
 
   return (
-    <div>
-      <div>
-        <h2>MehMaybe</h2>
+    <div className="border-r border-border bg-black/30 backdrop-blur-sm w-full md:w-48 md:min-h-screen flex flex-col relative z-10">
+      <div className="p-4 border-b border-border">
+        <h2 className="text-xl font-extralight tracking-tight">
+          MehMaybeTomorrow
+        </h2>
+        <p className="text-sm text-text-secondary">Minimalism in motion</p>
       </div>
-      <nav>
-        <ul>
+      <nav className="flex-1 py-2">
+        <ul className="space-y-1">
           <li>
-            <Link to="/todo">
-              <CheckSquare size={20} />
-              <span>Todos</span>
+            <Link
+              to="/todo"
+              className={`flex items-center gap-2 px-4 py-2 text-text-secondary hover:text-accent transition-colors border-l-2 ${isActive(
+                "/todo"
+              )}`}
+            >
+              <CheckSquare size={18} strokeWidth={1} className="opacity-80" />
+              <span className="text-sm">Todos</span>
             </Link>
           </li>
           <li>
-            <Link to="/profile">
-              <UserCircle size={20} />
-              <span>Profile</span>
+            <Link
+              to="/profile"
+              className={`flex items-center gap-2 px-4 py-2 text-text-secondary hover:text-accent transition-colors border-l-2 ${isActive(
+                "/profile"
+              )}`}
+            >
+              <UserCircle size={18} strokeWidth={1} className="opacity-80" />
+              <span className="text-sm">Profile</span>
             </Link>
           </li>
           <li>
-            <button onClick={handleLogout}>
-              <LogOut size={20} />
-              <span>Logout</span>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 w-full text-left text-text-secondary hover:text-accent transition-colors"
+            >
+              <LogOut size={18} strokeWidth={1} className="opacity-80" />
+              <span className="text-sm">Logout</span>
             </button>
           </li>
         </ul>

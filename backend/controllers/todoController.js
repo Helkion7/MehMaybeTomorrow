@@ -3,13 +3,15 @@ const Todo = require("../models/Todo");
 // Create a new todo
 const createTodo = async (req, res) => {
   try {
-    const { title, description, tags } = req.body;
+    const { title, description, tags, priority, subtasks } = req.body;
 
     // Create new todo associated with the logged-in user
     const newTodo = await Todo.create({
       title,
       description,
       tags,
+      priority,
+      subtasks, // Add subtasks to the new todo
       user: req.user.userId,
     });
 
@@ -115,7 +117,8 @@ const getTodayTodos = async (req, res) => {
 const updateTodo = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, completed, tags } = req.body;
+    const { title, description, completed, tags, priority, subtasks } =
+      req.body;
 
     // Find todo and check ownership
     const todo = await Todo.findById(id);
@@ -138,7 +141,7 @@ const updateTodo = async (req, res) => {
     // Update todo
     const updatedTodo = await Todo.findByIdAndUpdate(
       id,
-      { title, description, completed, tags },
+      { title, description, completed, tags, priority, subtasks },
       { new: true, runValidators: true }
     );
 
@@ -151,6 +154,100 @@ const updateTodo = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while updating todo",
+    });
+  }
+};
+
+// Update a subtask within a todo
+const updateSubtask = async (req, res) => {
+  try {
+    const { todoId, subtaskId } = req.params;
+    const { title, completed } = req.body;
+
+    // Find todo and check ownership
+    const todo = await Todo.findById(todoId);
+
+    if (!todo) {
+      return res.status(404).json({
+        success: false,
+        message: "Todo not found",
+      });
+    }
+
+    // Make sure user owns this todo
+    if (todo.user.toString() !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to update this todo",
+      });
+    }
+
+    // Find and update the specific subtask
+    const subtask = todo.subtasks.id(subtaskId);
+    if (!subtask) {
+      return res.status(404).json({
+        success: false,
+        message: "Subtask not found",
+      });
+    }
+
+    subtask.title = title || subtask.title;
+    subtask.completed = completed !== undefined ? completed : subtask.completed;
+
+    // Save the updated todo
+    await todo.save();
+
+    res.status(200).json({
+      success: true,
+      data: todo,
+    });
+  } catch (error) {
+    console.error("Update subtask error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating subtask",
+    });
+  }
+};
+
+// Delete a subtask
+const deleteSubtask = async (req, res) => {
+  try {
+    const { todoId, subtaskId } = req.params;
+
+    // Find todo and check ownership
+    const todo = await Todo.findById(todoId);
+
+    if (!todo) {
+      return res.status(404).json({
+        success: false,
+        message: "Todo not found",
+      });
+    }
+
+    // Make sure user owns this todo
+    if (todo.user.toString() !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to update this todo",
+      });
+    }
+
+    // Remove the subtask
+    todo.subtasks.pull(subtaskId);
+
+    // Save the updated todo
+    await todo.save();
+
+    res.status(200).json({
+      success: true,
+      data: todo,
+    });
+  } catch (error) {
+    console.error("Delete subtask error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while deleting subtask",
     });
   }
 };
@@ -228,6 +325,8 @@ module.exports = {
   getTodos,
   getTodayTodos,
   updateTodo,
+  updateSubtask,
+  deleteSubtask,
   deleteTodo,
   getTags,
 };

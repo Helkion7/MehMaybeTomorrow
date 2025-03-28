@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { PlusCircle, Filter, Tag, X, Search } from "lucide-react";
+import {
+  PlusCircle,
+  Filter,
+  Tag,
+  X,
+  Search,
+  Calendar,
+  ChevronDown,
+  Flag,
+} from "lucide-react";
 import TodoItem from "../components/TodoItem";
 import CreateTodo from "../components/CreateTodo";
 
@@ -11,9 +20,12 @@ const TodoPage = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTag, setSelectedTag] = useState("");
+  const [selectedPriority, setSelectedPriority] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [draggedItemIndex, setDraggedItemIndex] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [sortBy, setSortBy] = useState("date"); // Options: date, priority
   const navigate = useNavigate();
 
   // Fetch todos when component mounts or when filters change
@@ -116,6 +128,7 @@ const TodoPage = () => {
   const clearFilters = () => {
     setSelectedDate("");
     setSelectedTag("");
+    setSelectedPriority("");
   };
 
   const handleDragStart = (e, index) => {
@@ -156,164 +169,243 @@ const TodoPage = () => {
     setDraggedItemIndex(null);
   };
 
-  // Calculate search ranking score for a todo
-  const getSearchScore = (todo, term) => {
-    const searchTermLower = term.toLowerCase();
-    let score = 0;
+  // Filter and sort todos based on search term, priority, etc.
+  const filteredAndSortedTodos = todos
+    .filter((todo) => {
+      // Filter by search term
+      const matchesSearch =
+        searchTerm.trim() === ""
+          ? true
+          : todo.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (todo.description &&
+              todo.description
+                .toLowerCase()
+                .includes(searchTerm.toLowerCase())) ||
+            (todo.tags &&
+              todo.tags.some((tag) =>
+                tag.toLowerCase().includes(searchTerm.toLowerCase())
+              ));
 
-    // Check title matches (highest weight)
-    if (todo.title.toLowerCase().includes(searchTermLower)) {
-      score += 10;
-      // Exact title match gets higher score
-      if (todo.title.toLowerCase() === searchTermLower) {
-        score += 5;
+      // Filter by priority if selected
+      const matchesPriority =
+        !selectedPriority || todo.priority === selectedPriority;
+
+      return matchesSearch && matchesPriority;
+    })
+    .sort((a, b) => {
+      // Sort by chosen criteria
+      if (sortBy === "priority") {
+        // Define priority weights for sorting (high = 3, medium = 2, low = 1)
+        const priorityWeight = { high: 3, medium: 2, low: 1 };
+        return (
+          priorityWeight[b.priority || "medium"] -
+          priorityWeight[a.priority || "medium"]
+        );
       }
-      // Title starts with search term gets higher score
-      if (todo.title.toLowerCase().startsWith(searchTermLower)) {
-        score += 3;
-      }
-    }
 
-    // Check description matches
-    if (
-      todo.description &&
-      todo.description.toLowerCase().includes(searchTermLower)
-    ) {
-      score += 5;
-    }
+      // Default sort by date (newest first)
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
 
-    // Check tag matches
-    if (todo.tags) {
-      for (const tag of todo.tags) {
-        if (tag.toLowerCase().includes(searchTermLower)) {
-          score += 8;
-          // Exact tag match gets higher score
-          if (tag.toLowerCase() === searchTermLower) {
-            score += 4;
-          }
-        }
-      }
-    }
+  // Helper function to render priority badge with appropriate styling
+  const renderPriorityBadge = (priority) => {
+    const styles = {
+      low: "border-border text-text-secondary",
+      medium: "border-border text-text-primary",
+      high: "border-accent/70 text-accent",
+    };
 
-    return score;
+    return (
+      <span
+        className={`text-xs font-extralight border px-1.5 py-0.5 rounded-full ${styles[priority]}`}
+      >
+        {priority}
+      </span>
+    );
   };
 
-  // Filter and sort todos based on search term
-  const filteredTodos =
-    searchTerm.trim() === ""
-      ? todos
-      : todos
-          .filter((todo) => {
-            const searchTermLower = searchTerm.toLowerCase();
-            return (
-              todo.title.toLowerCase().includes(searchTermLower) ||
-              (todo.description &&
-                todo.description.toLowerCase().includes(searchTermLower)) ||
-              (todo.tags &&
-                todo.tags.some((tag) =>
-                  tag.toLowerCase().includes(searchTermLower)
-                ))
-            );
-          })
-          .sort((a, b) => {
-            // Sort by search relevance score
-            const scoreA = getSearchScore(a, searchTerm);
-            const scoreB = getSearchScore(b, searchTerm);
-            return scoreB - scoreA;
-          });
-
   return (
-    <div className="p-4">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Your Todos</h1>
+    <div className="py-2 px-1">
+      <div className="mb-4">
+        <h1 className="text-xl font-extralight text-text-primary tracking-tight">
+          Todo List
+        </h1>
+        <p className="text-sm text-text-secondary">Minimalism in motion</p>
       </div>
 
       {/* Search bar */}
-      <div className="mb-4">
-        <div className="flex items-center">
-          <Search size={20} />
+      <div className="mb-4 focus-within:ring-1 focus-within:ring-accent transition-all">
+        <div className="flex items-center border-b border-border">
+          <Search
+            size={16}
+            strokeWidth={1}
+            className="text-text-secondary opacity-70"
+          />
           <input
             type="text"
-            placeholder="Search todos by title, description or tags"
+            placeholder="Search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-transparent text-text-primary focus:outline-none py-1 px-2 text-sm font-extralight"
           />
           {searchTerm && (
-            <button onClick={() => setSearchTerm("")}>
-              <X size={16} />
+            <button
+              onClick={() => setSearchTerm("")}
+              className="text-text-secondary"
+            >
+              <X size={14} strokeWidth={1} />
             </button>
           )}
         </div>
       </div>
 
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold mb-2">Filters</h2>
+      <div className="mb-4">
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="flex items-center gap-1 text-text-secondary hover:text-accent transition-colors text-sm"
+        >
+          <Filter size={14} strokeWidth={1} className="opacity-70" />
+          <span>Filters</span>
+          <ChevronDown
+            size={14}
+            strokeWidth={1}
+            className={`opacity-70 transform transition-transform ${
+              showFilters ? "rotate-180" : ""
+            }`}
+          />
+        </button>
 
-        <div className="flex flex-wrap gap-4 items-center">
-          <button
-            onClick={handleTodayTodos}
-            className="border rounded px-3 py-1.5"
-          >
-            Today's Todos
-          </button>
-
-          <div className="flex items-center gap-2">
-            <label htmlFor="dateFilter">Date:</label>
-            <input
-              id="dateFilter"
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="border rounded px-2 py-1.5"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <label htmlFor="tagFilter">Tag:</label>
-            <select
-              id="tagFilter"
-              value={selectedTag}
-              onChange={(e) => setSelectedTag(e.target.value)}
-              className="border rounded px-2 py-1.5"
-            >
-              <option value="">All Tags</option>
-              {availableTags.map((tag) => (
-                <option key={tag} value={tag}>
-                  {tag}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {(selectedDate || selectedTag) && (
+        {showFilters && (
+          <div className="mt-2 space-y-2 border-l border-border pl-2">
             <button
-              onClick={clearFilters}
-              className="border rounded px-3 py-1.5"
+              onClick={handleTodayTodos}
+              className="text-text-secondary hover:text-accent transition-colors text-xs flex items-center gap-1"
             >
-              Clear Filters
+              <Calendar size={12} strokeWidth={1} className="opacity-70" />
+              Today
             </button>
-          )}
-        </div>
+
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="dateFilter"
+                className="text-xs text-text-secondary"
+              >
+                Date:
+              </label>
+              <input
+                id="dateFilter"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="tagFilter"
+                className="text-xs text-text-secondary"
+              >
+                Tag:
+              </label>
+              <select
+                id="tagFilter"
+                value={selectedTag}
+                onChange={(e) => setSelectedTag(e.target.value)}
+                className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
+              >
+                <option value="">All Tags</option>
+                {availableTags.map((tag) => (
+                  <option key={tag} value={tag}>
+                    {tag}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="priorityFilter"
+                className="text-xs text-text-secondary flex items-center gap-1"
+              >
+                <Flag size={12} strokeWidth={1} className="opacity-70" />
+                Priority:
+              </label>
+              <select
+                id="priorityFilter"
+                value={selectedPriority}
+                onChange={(e) => setSelectedPriority(e.target.value)}
+                className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
+              >
+                <option value="">All Priorities</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label htmlFor="sortBy" className="text-xs text-text-secondary">
+                Sort by:
+              </label>
+              <select
+                id="sortBy"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
+              >
+                <option value="date">Date</option>
+                <option value="priority">Priority</option>
+              </select>
+            </div>
+
+            {(selectedDate || selectedTag || selectedPriority) && (
+              <button
+                onClick={clearFilters}
+                className="text-text-secondary hover:text-accent transition-colors text-xs flex items-center gap-1"
+              >
+                <X size={12} strokeWidth={1} />
+                Clear Filters
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <button
         onClick={() => setShowCreateForm(!showCreateForm)}
-        className="flex items-center gap-1 border rounded px-3 py-2 mb-6"
+        className="text-text-secondary hover:text-accent transition-colors text-sm flex items-center gap-1 mb-4"
       >
-        {showCreateForm ? "Cancel" : "Add New Todo"}
+        <PlusCircle size={14} strokeWidth={1} className="opacity-70" />
+        {showCreateForm ? "Cancel" : "New Task"}
       </button>
 
       {showCreateForm && (
         <CreateTodo onAddTodo={handleAddTodo} availableTags={availableTags} />
       )}
 
-      {isLoading ? (
-        <div className="text-center py-8">
-          <p>Loading todos...</p>
+      {selectedPriority && (
+        <div className="mb-4 flex items-center gap-2">
+          <span className="text-xs text-text-secondary">
+            Filtered by priority:
+          </span>
+          {renderPriorityBadge(selectedPriority)}
+          <button
+            onClick={() => setSelectedPriority("")}
+            className="text-text-secondary hover:text-accent"
+          >
+            <X size={12} strokeWidth={1} />
+          </button>
         </div>
-      ) : filteredTodos.length > 0 ? (
-        <div className="space-y-2">
-          {filteredTodos.map((todo, index) => (
+      )}
+
+      {isLoading ? (
+        <div className="py-4 flex justify-center">
+          <p className="text-sm text-text-secondary">Loading...</p>
+        </div>
+      ) : filteredAndSortedTodos.length > 0 ? (
+        <div className="space-y-0">
+          {filteredAndSortedTodos.map((todo, index) => (
             <TodoItem
               key={todo._id}
               todo={todo}
@@ -328,19 +420,13 @@ const TodoPage = () => {
           ))}
         </div>
       ) : (
-        <div className="text-center py-8">
-          {searchTerm ? (
-            <p>No todos matching your search. Try a different term.</p>
+        <div className="py-6 flex flex-col items-center">
+          {searchTerm || selectedPriority ? (
+            <p className="text-sm text-text-secondary">
+              No matching tasks found
+            </p>
           ) : (
-            <p>No todos found. Create one!</p>
-          )}
-          {!showCreateForm && !searchTerm && (
-            <button
-              onClick={() => setShowCreateForm(true)}
-              className="flex items-center gap-1 border rounded px-3 py-2 mt-4"
-            >
-              Add New Todo
-            </button>
+            <p className="text-sm text-text-secondary">No tasks yet</p>
           )}
         </div>
       )}

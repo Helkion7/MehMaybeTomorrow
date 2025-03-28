@@ -23,7 +23,11 @@ const ProtectedRoute = ({ children }) => {
   }, []);
 
   if (isAuthenticated === null) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-color-background">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
   }
 
   return isAuthenticated ? children : <Navigate to="/" />;

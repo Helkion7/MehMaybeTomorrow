@@ -1,6 +1,18 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { Trash2, Edit, Check, X, Tag, Plus, GripVertical } from "lucide-react";
+import {
+  Trash2,
+  Edit,
+  Check,
+  X,
+  Tag,
+  Plus,
+  GripVertical,
+  Flag,
+  ChevronDown,
+  ChevronRight,
+  ListTodo,
+} from "lucide-react";
 
 const TodoItem = ({
   todo,
@@ -18,6 +30,10 @@ const TodoItem = ({
   const [completed, setCompleted] = useState(todo.completed);
   const [tags, setTags] = useState(todo.tags || []);
   const [tagInput, setTagInput] = useState("");
+  const [priority, setPriority] = useState(todo.priority || "medium");
+  const [subtasks, setSubtasks] = useState(todo.subtasks || []);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [showSubtasks, setShowSubtasks] = useState(false);
 
   const handleAddTag = () => {
     if (tagInput.trim() !== "" && !tags.includes(tagInput.trim())) {
@@ -42,7 +58,7 @@ const TodoItem = ({
     try {
       const response = await axios.put(
         `${import.meta.env.VITE_BACKEND_URL}/api/todos/${todo._id}`,
-        { title, description, completed, tags },
+        { title, description, completed, tags, priority, subtasks },
         { withCredentials: true }
       );
 
@@ -64,6 +80,8 @@ const TodoItem = ({
           description,
           completed: newCompletedStatus,
           tags,
+          priority,
+          subtasks,
         },
         { withCredentials: true }
       );
@@ -88,7 +106,42 @@ const TodoItem = ({
     }
   };
 
-  // Format date for display
+  const handleAddSubtask = () => {
+    if (newSubtaskTitle.trim() === "") return;
+
+    const newSubtask = {
+      _id: Date.now().toString(),
+      title: newSubtaskTitle,
+      completed: false,
+    };
+
+    setSubtasks([...subtasks, newSubtask]);
+    setNewSubtaskTitle("");
+  };
+
+  const handleToggleSubtaskComplete = (subtaskId) => {
+    const updatedSubtasks = subtasks.map((subtask) =>
+      subtask._id === subtaskId
+        ? { ...subtask, completed: !subtask.completed }
+        : subtask
+    );
+
+    setSubtasks(updatedSubtasks);
+  };
+
+  const handleDeleteSubtask = (subtaskId) => {
+    const updatedSubtasks = subtasks.filter(
+      (subtask) => subtask._id !== subtaskId
+    );
+    setSubtasks(updatedSubtasks);
+  };
+
+  const completedSubtasks = subtasks.filter(
+    (subtask) => subtask.completed
+  ).length;
+  const subtaskRatio =
+    subtasks.length > 0 ? `${completedSubtasks}/${subtasks.length}` : "";
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString() + " " + date.toLocaleTimeString();
@@ -107,75 +160,203 @@ const TodoItem = ({
     onDrop(e, index);
   };
 
+  const renderPriorityIndicator = (priorityLevel) => {
+    const colors = {
+      low: "text-text-secondary opacity-50",
+      medium: "text-text-secondary opacity-70",
+      high: "text-accent opacity-90",
+    };
+
+    return <Flag size={12} strokeWidth={1} className={colors[priorityLevel]} />;
+  };
+
   return (
     <div
       draggable={!isEditing}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      className="flex flex-col border rounded shadow-sm mb-4 cursor-grab active:cursor-grabbing"
+      className="border-b border-border hover:bg-black/20 transition-colors backdrop-blur-sm relative z-10"
     >
       {isEditing ? (
-        <form onSubmit={handleUpdate}>
-          <div>
+        <form onSubmit={handleUpdate} className="py-2 px-2">
+          <div className="mb-2">
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
+              className="w-full bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent pb-1"
             />
           </div>
-          <div>
+          <div className="mb-2">
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Description (optional)"
+              className="w-full bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent pb-1 resize-none field-sizing-normal"
             />
           </div>
-          <div>
-            <label>
-              <input
-                type="checkbox"
-                checked={completed}
-                onChange={() => setCompleted(!completed)}
-              />
-              <span>Completed</span>
+          <div className="mb-3 flex items-center gap-2">
+            <input
+              type="checkbox"
+              id={`completed-${todo._id}`}
+              checked={completed}
+              onChange={() => setCompleted(!completed)}
+              className="appearance-none w-4 h-4 border border-border checked:bg-accent checked:border-accent relative rounded-sm"
+            />
+            <label htmlFor={`completed-${todo._id}`} className="text-sm">
+              Completed
             </label>
           </div>
 
-          <div>
-            <div>
-              <span>Tags</span>
+          <div className="mb-3">
+            <div className="flex items-center gap-1 mb-1">
+              <Flag size={14} strokeWidth={1} className="text-text-secondary" />
+              <span className="text-sm">Priority</span>
+            </div>
+            <div className="flex gap-3">
+              <label className="flex items-center gap-1 text-xs">
+                <input
+                  type="radio"
+                  name="priority"
+                  value="low"
+                  checked={priority === "low"}
+                  onChange={() => setPriority("low")}
+                  className="appearance-none w-3 h-3 rounded-full border border-border checked:bg-accent checked:border-accent"
+                />
+                <span className="text-text-secondary">Low</span>
+              </label>
+              <label className="flex items-center gap-1 text-xs">
+                <input
+                  type="radio"
+                  name="priority"
+                  value="medium"
+                  checked={priority === "medium"}
+                  onChange={() => setPriority("medium")}
+                  className="appearance-none w-3 h-3 rounded-full border border-border checked:bg-accent checked:border-accent"
+                />
+                <span className="text-text-secondary">Medium</span>
+              </label>
+              <label className="flex items-center gap-1 text-xs">
+                <input
+                  type="radio"
+                  name="priority"
+                  value="high"
+                  checked={priority === "high"}
+                  onChange={() => setPriority("high")}
+                  className="appearance-none w-3 h-3 rounded-full border border-border checked:bg-accent checked:border-accent"
+                />
+                <span className="text-text-secondary">High</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="mb-3">
+            <div className="flex items-center gap-1 mb-1">
+              <ListTodo
+                size={14}
+                strokeWidth={1}
+                className="text-text-secondary"
+              />
+              <span className="text-sm">Subtasks</span>
+            </div>
+            {subtasks.map((subtask, idx) => (
+              <div
+                key={subtask._id}
+                className="flex items-center gap-2 mb-1 pl-3"
+              >
+                <input
+                  type="checkbox"
+                  checked={subtask.completed}
+                  onChange={() => handleToggleSubtaskComplete(subtask._id)}
+                  className="appearance-none w-3 h-3 border border-border checked:bg-accent checked:border-accent relative rounded-sm"
+                />
+                <input
+                  type="text"
+                  value={subtask.title}
+                  onChange={(e) => {
+                    const updatedSubtasks = [...subtasks];
+                    updatedSubtasks[idx].title = e.target.value;
+                    setSubtasks(updatedSubtasks);
+                  }}
+                  className="flex-1 bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0.5"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleDeleteSubtask(subtask._id)}
+                  className="text-text-secondary hover:text-accent transition-colors"
+                >
+                  <X size={12} strokeWidth={1} />
+                </button>
+              </div>
+            ))}
+            <div className="flex items-center mt-2">
+              <input
+                type="text"
+                placeholder="Add a subtask"
+                value={newSubtaskTitle}
+                onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                className="flex-1 bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0.5"
+              />
+              <button
+                type="button"
+                onClick={handleAddSubtask}
+                className="text-text-secondary hover:text-accent transition-colors ml-1"
+              >
+                <Plus size={14} strokeWidth={1} />
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-3">
+            <div className="flex items-center gap-1 mb-1">
+              <Tag size={14} strokeWidth={1} className="text-text-secondary" />
+              <span className="text-sm">Tags</span>
             </div>
 
-            <div>
+            <div className="flex flex-wrap gap-1 mb-2">
               {tags.map((tag) => (
-                <span key={tag}>
+                <span
+                  key={tag}
+                  className="flex items-center text-xs border border-border rounded-full px-2 py-0.5 text-text-secondary"
+                >
                   {tag}
-                  <button type="button" onClick={() => handleRemoveTag(tag)}>
-                    <X size={14} />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveTag(tag)}
+                    className="ml-1"
+                  >
+                    <X size={12} strokeWidth={1} />
                   </button>
                 </span>
               ))}
             </div>
 
-            <div>
+            <div className="flex items-center">
               <input
                 type="text"
                 placeholder="Add a tag"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 maxLength={20}
+                className="w-full bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-sm"
               />
-              <button type="button" onClick={handleAddTag}>
-                <Plus size={18} />
+              <button
+                type="button"
+                onClick={handleAddTag}
+                className="text-text-secondary hover:text-accent ml-1"
+              >
+                <Plus size={16} strokeWidth={1} />
               </button>
             </div>
 
             {availableTags.length > 0 && (
-              <div>
-                <p>Existing tags:</p>
-                <div>
+              <div className="mt-2">
+                <p className="text-xs text-text-secondary mb-1">
+                  Existing tags:
+                </p>
+                <div className="flex flex-wrap gap-1">
                   {availableTags
                     .filter((tag) => !tags.includes(tag))
                     .map((tag) => (
@@ -183,6 +364,7 @@ const TodoItem = ({
                         key={tag}
                         type="button"
                         onClick={() => handleSelectExistingTag(tag)}
+                        className="text-xs border border-border rounded-full px-2 py-0.5 text-text-secondary hover:border-accent hover:text-accent transition-colors"
                       >
                         {tag}
                       </button>
@@ -192,69 +374,183 @@ const TodoItem = ({
             )}
           </div>
 
-          <div>
-            <button type="submit">
-              <Check size={16} /> Save
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="text-text-secondary hover:text-accent transition-colors flex items-center gap-1 text-sm py-1"
+            >
+              <Check size={14} strokeWidth={1} /> Save
             </button>
-            <button type="button" onClick={() => setIsEditing(false)}>
-              <X size={16} /> Cancel
+            <button
+              type="button"
+              onClick={() => setIsEditing(false)}
+              className="text-text-secondary hover:text-accent transition-colors flex items-center gap-1 text-sm py-1"
+            >
+              <X size={14} strokeWidth={1} /> Cancel
             </button>
           </div>
         </form>
       ) : (
-        <div className="flex flex-col p-4">
-          <div className="flex items-center gap-2">
-            <div className="cursor-grab flex items-center">
-              <GripVertical size={20} />
+        <div>
+          <div className="flex items-center justify-between w-full px-2 py-1">
+            <div className="flex items-center gap-2 flex-1">
+              <div className="cursor-grab flex items-center text-text-secondary">
+                <GripVertical
+                  size={16}
+                  strokeWidth={1}
+                  className="opacity-50"
+                />
+              </div>
+              <input
+                type="checkbox"
+                checked={completed}
+                onChange={handleToggleComplete}
+                className="appearance-none w-4 h-4 border border-border checked:bg-accent checked:border-accent relative rounded-sm"
+              />
+
+              <div className="flex-1 flex items-start">
+                {/* Title on the left, larger size */}
+                <div className="flex items-center min-w-[30%] pr-3">
+                  {renderPriorityIndicator(todo.priority || "medium")}
+                  <h3
+                    className={`text-base font-extralight ${
+                      completed
+                        ? "line-through text-text-secondary"
+                        : "text-text-primary"
+                    }`}
+                  >
+                    {todo.title}
+                  </h3>
+
+                  {subtasks.length > 0 && (
+                    <span className="text-xs text-text-secondary ml-2">
+                      ({subtaskRatio})
+                    </span>
+                  )}
+                </div>
+
+                {/* Description in the middle */}
+                {todo.description && todo.description.trim() !== "" && (
+                  <p className="text-xs text-text-secondary font-extralight flex-1 px-2">
+                    {todo.description}
+                  </p>
+                )}
+
+                {/* Tags on the right */}
+                {todo.tags && todo.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 ml-auto">
+                    {todo.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="text-xs text-text-secondary whitespace-nowrap"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-            <input
-              type="checkbox"
-              checked={completed}
-              onChange={handleToggleComplete}
-              className="mr-2"
-            />
-            <h3
-              className={`text-lg font-medium ${
-                completed ? "line-through opacity-70" : ""
-              }`}
-            >
-              {todo.title}
-            </h3>
+
+            <div className="flex gap-1 items-center ml-2">
+              {subtasks.length > 0 && (
+                <button
+                  onClick={() => setShowSubtasks(!showSubtasks)}
+                  className="text-text-secondary hover:text-accent transition-colors p-1"
+                >
+                  {showSubtasks ? (
+                    <ChevronDown
+                      size={14}
+                      strokeWidth={1}
+                      className="opacity-70"
+                    />
+                  ) : (
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={1}
+                      className="opacity-70"
+                    />
+                  )}
+                </button>
+              )}
+              <button
+                onClick={() => setIsEditing(true)}
+                className="text-text-secondary hover:text-accent transition-colors p-1"
+              >
+                <Edit
+                  size={14}
+                  strokeWidth={1}
+                  className="opacity-70 hover:opacity-100"
+                />
+              </button>
+              <button
+                onClick={handleDelete}
+                className="text-text-secondary hover:text-accent transition-colors p-1"
+              >
+                <Trash2
+                  size={14}
+                  strokeWidth={1}
+                  className="opacity-70 hover:opacity-100"
+                />
+              </button>
+            </div>
           </div>
 
-          {todo.description && <p className="mt-2">{todo.description}</p>}
-
-          {todo.tags && todo.tags.length > 0 && (
-            <div className="flex flex-wrap mt-2 gap-1">
-              {todo.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="text-xs border rounded-full px-2 py-1"
+          {showSubtasks && subtasks.length > 0 && (
+            <div className="pl-10 pr-3 pb-2">
+              {subtasks.map((subtask) => (
+                <div
+                  key={subtask._id}
+                  className="flex items-center py-0.5 text-xs"
                 >
-                  {tag}
-                </span>
+                  <input
+                    type="checkbox"
+                    checked={subtask.completed}
+                    onChange={() => {
+                      const updatedSubtasks = subtasks.map((st) =>
+                        st._id === subtask._id
+                          ? { ...st, completed: !st.completed }
+                          : st
+                      );
+                      setSubtasks(updatedSubtasks);
+
+                      axios
+                        .put(
+                          `${import.meta.env.VITE_BACKEND_URL}/api/todos/${
+                            todo._id
+                          }`,
+                          {
+                            title,
+                            description,
+                            completed,
+                            tags,
+                            priority,
+                            subtasks: updatedSubtasks,
+                          },
+                          { withCredentials: true }
+                        )
+                        .then((response) => {
+                          onUpdateTodo(response.data.data);
+                        })
+                        .catch((error) => {
+                          console.error("Failed to update subtask:", error);
+                        });
+                    }}
+                    className="appearance-none w-3 h-3 border border-border checked:bg-accent checked:border-accent relative rounded-sm"
+                  />
+                  <span
+                    className={`ml-2 ${
+                      subtask.completed
+                        ? "line-through text-text-secondary"
+                        : "text-text-primary"
+                    }`}
+                  >
+                    {subtask.title}
+                  </span>
+                </div>
               ))}
             </div>
           )}
-
-          <div className="text-xs mt-2 text-gray-500">
-            <small>Created: {formatDate(todo.createdAt)}</small>
-          </div>
-
-          <div className="flex gap-2 mt-3">
-            <button
-              onClick={() => setIsEditing(true)}
-              className="flex items-center gap-1 text-sm border rounded px-2 py-1"
-            >
-              <Edit size={16} /> Edit
-            </button>
-            <button
-              onClick={handleDelete}
-              className="flex items-center gap-1 text-sm border rounded px-2 py-1"
-            >
-              <Trash2 size={16} /> Delete
-            </button>
-          </div>
         </div>
       )}
     </div>

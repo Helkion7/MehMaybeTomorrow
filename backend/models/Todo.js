@@ -1,6 +1,19 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
+const SubtaskSchema = new Schema({
+  title: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: [100, "Subtask title cannot be more than 100 characters"],
+  },
+  completed: {
+    type: Boolean,
+    default: false,
+  },
+});
+
 const TodoSchema = new Schema(
   {
     title: {
@@ -18,6 +31,11 @@ const TodoSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    priority: {
+      type: String,
+      enum: ["low", "medium", "high"],
+      default: "medium",
+    },
     tags: [
       {
         type: String,
@@ -25,6 +43,7 @@ const TodoSchema = new Schema(
         maxlength: [20, "Tag cannot be more than 20 characters"],
       },
     ],
+    subtasks: [SubtaskSchema],
     user: {
       type: Schema.Types.ObjectId,
       ref: "User",
