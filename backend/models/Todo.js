@@ -36,6 +36,12 @@ const TodoSchema = new Schema(
       enum: ["low", "medium", "high"],
       default: "medium",
     },
+    enthusiasm: {
+      type: Number,
+      min: 0,
+      max: 4,
+      default: 2, // Neutral by default
+    },
     tags: [
       {
         type: String,

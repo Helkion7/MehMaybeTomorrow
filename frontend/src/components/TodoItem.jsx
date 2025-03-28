@@ -12,7 +12,9 @@ import {
   ChevronDown,
   ChevronRight,
   ListTodo,
+  Gauge,
 } from "lucide-react";
+import MehMeter from "./MehMeter";
 
 const TodoItem = ({
   todo,
@@ -23,6 +25,8 @@ const TodoItem = ({
   onDragStart,
   onDragOver,
   onDrop,
+  isSelected,
+  id,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(todo.title);
@@ -34,6 +38,9 @@ const TodoItem = ({
   const [subtasks, setSubtasks] = useState(todo.subtasks || []);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [showSubtasks, setShowSubtasks] = useState(false);
+  const [enthusiasm, setEnthusiasm] = useState(
+    todo.enthusiasm !== undefined ? todo.enthusiasm : 2
+  );
 
   const handleAddTag = () => {
     if (tagInput.trim() !== "" && !tags.includes(tagInput.trim())) {
@@ -58,7 +65,7 @@ const TodoItem = ({
     try {
       const response = await axios.put(
         `${import.meta.env.VITE_BACKEND_URL}/api/todos/${todo._id}`,
-        { title, description, completed, tags, priority, subtasks },
+        { title, description, completed, tags, priority, subtasks, enthusiasm },
         { withCredentials: true }
       );
 
@@ -82,6 +89,7 @@ const TodoItem = ({
           tags,
           priority,
           subtasks,
+          enthusiasm,
         },
         { withCredentials: true }
       );
@@ -136,6 +144,29 @@ const TodoItem = ({
     setSubtasks(updatedSubtasks);
   };
 
+  const handleEnthusiasmChange = async (newValue) => {
+    try {
+      const response = await axios.put(
+        `${import.meta.env.VITE_BACKEND_URL}/api/todos/${todo._id}`,
+        {
+          title,
+          description,
+          completed,
+          tags,
+          priority,
+          subtasks,
+          enthusiasm: newValue,
+        },
+        { withCredentials: true }
+      );
+
+      setEnthusiasm(newValue);
+      onUpdateTodo(response.data.data);
+    } catch (error) {
+      console.error("Failed to update enthusiasm:", error);
+    }
+  };
+
   const completedSubtasks = subtasks.filter(
     (subtask) => subtask.completed
   ).length;
@@ -170,13 +201,27 @@ const TodoItem = ({
     return <Flag size={12} strokeWidth={1} className={colors[priorityLevel]} />;
   };
 
+  const getEnthusiasmStyles = () => {
+    const styles = [
+      "opacity-60 grayscale", // Very meh (0)
+      "opacity-80", // Somewhat meh (1)
+      "", // Neutral (2)
+      "border-l border-l-accent/40", // Somewhat enthusiastic (3)
+      "border-l-2 border-l-accent/70", // Very enthusiastic (4)
+    ];
+    return styles[enthusiasm] || "";
+  };
+
   return (
     <div
+      id={id}
       draggable={!isEditing}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      className="border-b border-border hover:bg-black/20 transition-colors backdrop-blur-sm relative z-10"
+      className={`border-b border-border hover:bg-black/20 transition-colors backdrop-blur-sm relative z-10 ${
+        isSelected ? "bg-accent/5 border-l-2 border-l-accent" : ""
+      } ${getEnthusiasmStyles()}`}
     >
       {isEditing ? (
         <form onSubmit={handleUpdate} className="py-2 px-2">
@@ -249,6 +294,22 @@ const TodoItem = ({
                 />
                 <span className="text-text-secondary">High</span>
               </label>
+            </div>
+          </div>
+
+          <div className="mb-3">
+            <div className="flex items-center gap-1 mb-1">
+              <Gauge
+                size={14}
+                strokeWidth={1}
+                className="text-text-secondary"
+              />
+              <span className="text-sm">Enthusiasm</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-text-secondary">Meh</span>
+              <MehMeter value={enthusiasm} onChange={setEnthusiasm} />
+              <span className="text-xs text-text-secondary">Yeah!</span>
             </div>
           </div>
 
@@ -452,47 +513,35 @@ const TodoItem = ({
               </div>
             </div>
 
-            <div className="flex gap-1 items-center ml-2">
-              {subtasks.length > 0 && (
+            <div className="flex items-center gap-2 ml-2">
+              <MehMeter
+                value={enthusiasm}
+                onChange={handleEnthusiasmChange}
+                size="small"
+              />
+
+              <div className="flex gap-1 items-center">
                 <button
-                  onClick={() => setShowSubtasks(!showSubtasks)}
+                  onClick={() => setIsEditing(true)}
                   className="text-text-secondary hover:text-accent transition-colors p-1"
                 >
-                  {showSubtasks ? (
-                    <ChevronDown
-                      size={14}
-                      strokeWidth={1}
-                      className="opacity-70"
-                    />
-                  ) : (
-                    <ChevronRight
-                      size={14}
-                      strokeWidth={1}
-                      className="opacity-70"
-                    />
-                  )}
+                  <Edit
+                    size={14}
+                    strokeWidth={1}
+                    className="opacity-70 hover:opacity-100"
+                  />
                 </button>
-              )}
-              <button
-                onClick={() => setIsEditing(true)}
-                className="text-text-secondary hover:text-accent transition-colors p-1"
-              >
-                <Edit
-                  size={14}
-                  strokeWidth={1}
-                  className="opacity-70 hover:opacity-100"
-                />
-              </button>
-              <button
-                onClick={handleDelete}
-                className="text-text-secondary hover:text-accent transition-colors p-1"
-              >
-                <Trash2
-                  size={14}
-                  strokeWidth={1}
-                  className="opacity-70 hover:opacity-100"
-                />
-              </button>
+                <button
+                  onClick={handleDelete}
+                  className="text-text-secondary hover:text-accent transition-colors p-1"
+                >
+                  <Trash2
+                    size={14}
+                    strokeWidth={1}
+                    className="opacity-70 hover:opacity-100"
+                  />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -526,6 +575,7 @@ const TodoItem = ({
                             tags,
                             priority,
                             subtasks: updatedSubtasks,
+                            enthusiasm,
                           },
                           { withCredentials: true }
                         )

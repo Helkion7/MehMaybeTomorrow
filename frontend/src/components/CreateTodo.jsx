@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { Plus, X, Tag, Flag, ListTodo } from "lucide-react";
+import { Plus, X, Tag, Flag, ListTodo, Gauge } from "lucide-react";
+import MehMeter from "./MehMeter";
 
 const CreateTodo = ({ onAddTodo, availableTags = [] }) => {
   const [title, setTitle] = useState("");
@@ -10,6 +11,7 @@ const CreateTodo = ({ onAddTodo, availableTags = [] }) => {
   const [priority, setPriority] = useState("medium");
   const [subtasks, setSubtasks] = useState([]);
   const [subtaskInput, setSubtaskInput] = useState("");
+  const [enthusiasm, setEnthusiasm] = useState(2); // Default to neutral
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -56,7 +58,7 @@ const CreateTodo = ({ onAddTodo, availableTags = [] }) => {
     try {
       const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/todos`,
-        { title, description, tags, priority, subtasks },
+        { title, description, tags, priority, subtasks, enthusiasm },
         { withCredentials: true }
       );
 
@@ -66,6 +68,7 @@ const CreateTodo = ({ onAddTodo, availableTags = [] }) => {
       setTags([]);
       setPriority("medium");
       setSubtasks([]);
+      setEnthusiasm(2); // Reset to neutral
     } catch (error) {
       console.error("Failed to create todo:", error);
       setError(error.response?.data?.message || "Failed to create todo");
@@ -205,6 +208,23 @@ const CreateTodo = ({ onAddTodo, availableTags = [] }) => {
                 className="opacity-70 hover:opacity-100"
               />
             </button>
+          </div>
+        </div>
+
+        {/* Enthusiasm Meter */}
+        <div className="mb-2">
+          <div className="flex items-center gap-1 mb-1">
+            <Gauge
+              size={14}
+              strokeWidth={1}
+              className="text-text-secondary opacity-70"
+            />
+            <span className="text-xs text-text-secondary">Enthusiasm</span>
+          </div>
+          <div className="flex items-center gap-2 pl-0">
+            <span className="text-xs text-text-secondary">Meh</span>
+            <MehMeter value={enthusiasm} onChange={setEnthusiasm} />
+            <span className="text-xs text-text-secondary">Yeah!</span>
           </div>
         </div>
 

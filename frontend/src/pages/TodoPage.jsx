@@ -10,9 +10,12 @@ import {
   Calendar,
   ChevronDown,
   Flag,
+  Shuffle,
+  Gauge,
 } from "lucide-react";
 import TodoItem from "../components/TodoItem";
 import CreateTodo from "../components/CreateTodo";
+import MehMeter from "../components/MehMeter";
 
 const TodoPage = () => {
   const [todos, setTodos] = useState([]);
@@ -21,11 +24,14 @@ const TodoPage = () => {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTag, setSelectedTag] = useState("");
   const [selectedPriority, setSelectedPriority] = useState("");
+  const [selectedEnthusiasm, setSelectedEnthusiasm] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [draggedItemIndex, setDraggedItemIndex] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [sortBy, setSortBy] = useState("date"); // Options: date, priority
+  const [sortBy, setSortBy] = useState("date"); // Options: date, priority, enthusiasm
+  const [randomTodoId, setRandomTodoId] = useState(null);
+  const [isRoulette, setIsRoulette] = useState(false);
   const navigate = useNavigate();
 
   // Fetch todos when component mounts or when filters change
@@ -37,6 +43,30 @@ const TodoPage = () => {
   useEffect(() => {
     fetchTags();
   }, []);
+
+  // Animation effect for task roulette
+  useEffect(() => {
+    if (isRoulette) {
+      const rouletteAnimation = setInterval(() => {
+        // Select a random todo temporarily during the animation
+        if (filteredAndSortedTodos.length > 0) {
+          const randomIndex = Math.floor(
+            Math.random() * filteredAndSortedTodos.length
+          );
+          setRandomTodoId(filteredAndSortedTodos[randomIndex]._id);
+        }
+      }, 100);
+
+      // Stop the animation after 1.5 seconds and select the final random todo
+      setTimeout(() => {
+        clearInterval(rouletteAnimation);
+        selectRandomTodo();
+        setIsRoulette(false);
+      }, 1500);
+
+      return () => clearInterval(rouletteAnimation);
+    }
+  }, [isRoulette]);
 
   const fetchTags = async () => {
     try {
@@ -122,6 +152,10 @@ const TodoPage = () => {
   };
 
   const handleDeleteTodo = (todoId) => {
+    // Clear the random selection if the deleted todo was selected
+    if (todoId === randomTodoId) {
+      setRandomTodoId(null);
+    }
     setTodos(todos.filter((todo) => todo._id !== todoId));
   };
 
@@ -129,6 +163,39 @@ const TodoPage = () => {
     setSelectedDate("");
     setSelectedTag("");
     setSelectedPriority("");
+    setSelectedEnthusiasm(null);
+    // Clear random selection when filters are cleared
+    setRandomTodoId(null);
+  };
+
+  // Task Roulette - select a random todo
+  const selectRandomTodo = () => {
+    if (filteredAndSortedTodos.length > 0) {
+      const randomIndex = Math.floor(
+        Math.random() * filteredAndSortedTodos.length
+      );
+      setRandomTodoId(filteredAndSortedTodos[randomIndex]._id);
+
+      // Scroll to the selected todo with a slight delay to ensure DOM updates
+      setTimeout(() => {
+        const element = document.getElementById(
+          `todo-${filteredAndSortedTodos[randomIndex]._id}`
+        );
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
+    }
+  };
+
+  // Start task roulette animation
+  const startTaskRoulette = () => {
+    setIsRoulette(true);
+  };
+
+  // Clear the random selection
+  const clearRandomSelection = () => {
+    setRandomTodoId(null);
   };
 
   const handleDragStart = (e, index) => {
@@ -169,7 +236,7 @@ const TodoPage = () => {
     setDraggedItemIndex(null);
   };
 
-  // Filter and sort todos based on search term, priority, etc.
+  // Filter and sort todos based on search term, priority, enthusiasm, etc.
   const filteredAndSortedTodos = todos
     .filter((todo) => {
       // Filter by search term
@@ -190,7 +257,11 @@ const TodoPage = () => {
       const matchesPriority =
         !selectedPriority || todo.priority === selectedPriority;
 
-      return matchesSearch && matchesPriority;
+      // Filter by enthusiasm if selected
+      const matchesEnthusiasm =
+        selectedEnthusiasm === null || todo.enthusiasm === selectedEnthusiasm;
+
+      return matchesSearch && matchesPriority && matchesEnthusiasm;
     })
     .sort((a, b) => {
       // Sort by chosen criteria
@@ -201,6 +272,9 @@ const TodoPage = () => {
           priorityWeight[b.priority || "medium"] -
           priorityWeight[a.priority || "medium"]
         );
+      } else if (sortBy === "enthusiasm") {
+        // Higher enthusiasm first
+        return (b.enthusiasm || 2) - (a.enthusiasm || 2);
       }
 
       // Default sort by date (newest first)
@@ -259,7 +333,7 @@ const TodoPage = () => {
         </div>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 flex justify-between items-start">
         <button
           onClick={() => setShowFilters(!showFilters)}
           className="flex items-center gap-1 text-text-secondary hover:text-accent transition-colors text-sm"
@@ -275,102 +349,148 @@ const TodoPage = () => {
           />
         </button>
 
-        {showFilters && (
-          <div className="mt-2 space-y-2 border-l border-border pl-2">
+        {/* Task Roulette Button */}
+        {filteredAndSortedTodos.length > 1 && (
+          <div className="flex items-center gap-2">
             <button
-              onClick={handleTodayTodos}
-              className="text-text-secondary hover:text-accent transition-colors text-xs flex items-center gap-1"
+              onClick={startTaskRoulette}
+              disabled={isRoulette}
+              className={`flex items-center gap-1 text-text-secondary hover:text-accent transition-colors text-sm ${
+                isRoulette ? "opacity-50" : ""
+              }`}
             >
-              <Calendar size={12} strokeWidth={1} className="opacity-70" />
-              Today
+              <Shuffle size={14} strokeWidth={1} className="opacity-70" />
+              <span>Task Roulette</span>
             </button>
-
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="dateFilter"
-                className="text-xs text-text-secondary"
-              >
-                Date:
-              </label>
-              <input
-                id="dateFilter"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="tagFilter"
-                className="text-xs text-text-secondary"
-              >
-                Tag:
-              </label>
-              <select
-                id="tagFilter"
-                value={selectedTag}
-                onChange={(e) => setSelectedTag(e.target.value)}
-                className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
-              >
-                <option value="">All Tags</option>
-                {availableTags.map((tag) => (
-                  <option key={tag} value={tag}>
-                    {tag}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="priorityFilter"
-                className="text-xs text-text-secondary flex items-center gap-1"
-              >
-                <Flag size={12} strokeWidth={1} className="opacity-70" />
-                Priority:
-              </label>
-              <select
-                id="priorityFilter"
-                value={selectedPriority}
-                onChange={(e) => setSelectedPriority(e.target.value)}
-                className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
-              >
-                <option value="">All Priorities</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label htmlFor="sortBy" className="text-xs text-text-secondary">
-                Sort by:
-              </label>
-              <select
-                id="sortBy"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
-              >
-                <option value="date">Date</option>
-                <option value="priority">Priority</option>
-              </select>
-            </div>
-
-            {(selectedDate || selectedTag || selectedPriority) && (
+            {randomTodoId && (
               <button
-                onClick={clearFilters}
-                className="text-text-secondary hover:text-accent transition-colors text-xs flex items-center gap-1"
+                onClick={clearRandomSelection}
+                className="text-text-secondary hover:text-accent transition-colors"
               >
                 <X size={12} strokeWidth={1} />
-                Clear Filters
               </button>
             )}
           </div>
         )}
       </div>
+
+      {showFilters && (
+        <div className="mt-2 space-y-2 border-l border-border pl-2">
+          <button
+            onClick={handleTodayTodos}
+            className="text-text-secondary hover:text-accent transition-colors text-xs flex items-center gap-1"
+          >
+            <Calendar size={12} strokeWidth={1} className="opacity-70" />
+            Today
+          </button>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="dateFilter" className="text-xs text-text-secondary">
+              Date:
+            </label>
+            <input
+              id="dateFilter"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="tagFilter" className="text-xs text-text-secondary">
+              Tag:
+            </label>
+            <select
+              id="tagFilter"
+              value={selectedTag}
+              onChange={(e) => setSelectedTag(e.target.value)}
+              className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
+            >
+              <option value="">All Tags</option>
+              {availableTags.map((tag) => (
+                <option key={tag} value={tag}>
+                  {tag}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="priorityFilter"
+              className="text-xs text-text-secondary flex items-center gap-1"
+            >
+              <Flag size={12} strokeWidth={1} className="opacity-70" />
+              Priority:
+            </label>
+            <select
+              id="priorityFilter"
+              value={selectedPriority}
+              onChange={(e) => setSelectedPriority(e.target.value)}
+              className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
+            >
+              <option value="">All Priorities</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="enthusiasmFilter"
+              className="text-xs text-text-secondary flex items-center gap-1"
+            >
+              <Gauge size={12} strokeWidth={1} className="opacity-70" />
+              Enthusiasm:
+            </label>
+            <select
+              id="enthusiasmFilter"
+              value={selectedEnthusiasm !== null ? selectedEnthusiasm : ""}
+              onChange={(e) =>
+                setSelectedEnthusiasm(
+                  e.target.value === "" ? null : parseInt(e.target.value, 10)
+                )
+              }
+              className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
+            >
+              <option value="">All Levels</option>
+              <option value="0">Very Meh</option>
+              <option value="1">Somewhat Meh</option>
+              <option value="2">Neutral</option>
+              <option value="3">Somewhat Yeah</option>
+              <option value="4">Very Yeah</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="sortBy" className="text-xs text-text-secondary">
+              Sort by:
+            </label>
+            <select
+              id="sortBy"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
+            >
+              <option value="date">Date</option>
+              <option value="priority">Priority</option>
+              <option value="enthusiasm">Enthusiasm</option>
+            </select>
+          </div>
+
+          {(selectedDate || selectedTag || selectedPriority) && (
+            <button
+              onClick={clearFilters}
+              className="text-text-secondary hover:text-accent transition-colors text-xs flex items-center gap-1"
+            >
+              <X size={12} strokeWidth={1} />
+              Clear Filters
+            </button>
+          )}
+        </div>
+      )}
 
       <button
         onClick={() => setShowCreateForm(!showCreateForm)}
@@ -416,6 +536,8 @@ const TodoPage = () => {
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
+              isSelected={todo._id === randomTodoId}
+              id={`todo-${todo._id}`}
             />
           ))}
         </div>

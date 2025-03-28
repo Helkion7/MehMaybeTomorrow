@@ -3,7 +3,8 @@ const Todo = require("../models/Todo");
 // Create a new todo
 const createTodo = async (req, res) => {
   try {
-    const { title, description, tags, priority, subtasks } = req.body;
+    const { title, description, tags, priority, subtasks, enthusiasm } =
+      req.body;
 
     // Create new todo associated with the logged-in user
     const newTodo = await Todo.create({
@@ -12,6 +13,7 @@ const createTodo = async (req, res) => {
       tags,
       priority,
       subtasks, // Add subtasks to the new todo
+      enthusiasm, // Add enthusiasm to the new todo
       user: req.user.userId,
     });
 
@@ -117,8 +119,15 @@ const getTodayTodos = async (req, res) => {
 const updateTodo = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, completed, tags, priority, subtasks } =
-      req.body;
+    const {
+      title,
+      description,
+      completed,
+      tags,
+      priority,
+      subtasks,
+      enthusiasm,
+    } = req.body;
 
     // Find todo and check ownership
     const todo = await Todo.findById(id);
@@ -141,7 +150,7 @@ const updateTodo = async (req, res) => {
     // Update todo
     const updatedTodo = await Todo.findByIdAndUpdate(
       id,
-      { title, description, completed, tags, priority, subtasks },
+      { title, description, completed, tags, priority, subtasks, enthusiasm },
       { new: true, runValidators: true }
     );
 
