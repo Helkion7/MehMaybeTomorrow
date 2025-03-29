@@ -252,6 +252,68 @@
   }
 }
 
+/* Reward animations */
+@keyframes reward-fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes reward-slideIn {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.reward-animation-fadeIn {
+  animation: reward-fadeIn 0.5s ease-in;
+}
+
+.reward-animation-slideIn {
+  animation: reward-slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Loot box effects */
+.lootbox-glow {
+  box-shadow: 0 0 15px var(--color-accent);
+  transition: box-shadow 0.3s ease;
+}
+
+.legendary-box-shine::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 150%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    color-mix(in oklab, var(--color-accent) 30%, transparent) 50%,
+    transparent 100%
+  );
+  transform: rotate(45deg);
+  animation: legendary-shine 2s infinite;
+}
+
+@keyframes legendary-shine {
+  0% {
+    left: -150%;
+  }
+  50%,
+  100% {
+    left: 150%;
+  }
+}
+
 /* Global styles */
 body {
   background-color: var(--color-background);

@@ -8,6 +8,7 @@ const rateLimit = require("express-rate-limit");
 const authRoutes = require("./routes/authRoutes");
 const todoRoutes = require("./routes/todoRoutes");
 const userRoutes = require("./routes/userRoutes");
+const rewardRoutes = require("./routes/rewardRoutes"); // Added rewardRoutes
 
 // Initialize Express app
 const app = express();
@@ -48,6 +49,7 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/todos", todoRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/rewards", rewardRoutes); // Added new route for rewards
 
 // Enhanced debug route to check available routes
 app.get("/debug/routes", (req, res) => {

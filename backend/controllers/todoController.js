@@ -1,4 +1,5 @@
 const Todo = require("../models/Todo");
+const Key = require("../models/Key"); // Add this import
 
 // Create a new todo
 const createTodo = async (req, res) => {
@@ -185,12 +186,39 @@ const updateTodo = async (req, res) => {
       });
     }
 
+    // Check if task is being completed
+    const isBeingCompleted = !todo.completed && completed;
+
     // Update todo
     const updatedTodo = await Todo.findByIdAndUpdate(
       id,
       { title, description, completed, tags, priority, subtasks },
       { new: true, runValidators: true }
     );
+
+    // If the task is being completed, award a key
+    if (isBeingCompleted) {
+      // Find user's key record or create one
+      let userKeys = await Key.findOne({ user: req.user.userId });
+
+      if (!userKeys) {
+        userKeys = await Key.create({
+          user: req.user.userId,
+          count: 1, // First key
+        });
+      } else {
+        userKeys.count += 1;
+        await userKeys.save();
+      }
+
+      // Include key info in response
+      return res.status(200).json({
+        success: true,
+        data: updatedTodo,
+        keyAwarded: true,
+        keyCount: userKeys.count,
+      });
+    }
 
     res.status(200).json({
       success: true,

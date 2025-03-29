@@ -8,10 +8,15 @@ import {
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import TodoPage from "./pages/TodoPage";
-import FinishedPage from "./pages/FinishedPage"; // Import the new page
+import FinishedPage from "./pages/FinishedPage";
 import ProfilePage from "./pages/ProfilePage";
+import LootBoxesPage from "./pages/LootBoxesPage";
+import RewardsPage from "./pages/RewardsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
+import { RewardProvider } from "./contexts/RewardContext";
+import ThemeManager from "./components/ThemeManager";
+import { AnimationManager } from "./components/AnimationManager";
 
 function App() {
   return (
@@ -24,9 +29,14 @@ function App() {
             path="/todo"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <TodoPage />
-                </Layout>
+                <RewardProvider>
+                  <ThemeManager />
+                  <AnimationManager>
+                    <Layout>
+                      <TodoPage />
+                    </Layout>
+                  </AnimationManager>
+                </RewardProvider>
               </ProtectedRoute>
             }
           />
@@ -34,9 +44,14 @@ function App() {
             path="/finished"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <FinishedPage />
-                </Layout>
+                <RewardProvider>
+                  <ThemeManager />
+                  <AnimationManager>
+                    <Layout>
+                      <FinishedPage />
+                    </Layout>
+                  </AnimationManager>
+                </RewardProvider>
               </ProtectedRoute>
             }
           />
@@ -44,9 +59,44 @@ function App() {
             path="/profile"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <ProfilePage />
-                </Layout>
+                <RewardProvider>
+                  <ThemeManager />
+                  <AnimationManager>
+                    <Layout>
+                      <ProfilePage />
+                    </Layout>
+                  </AnimationManager>
+                </RewardProvider>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rewards"
+            element={
+              <ProtectedRoute>
+                <RewardProvider>
+                  <ThemeManager />
+                  <AnimationManager>
+                    <Layout>
+                      <RewardsPage />
+                    </Layout>
+                  </AnimationManager>
+                </RewardProvider>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/lootboxes"
+            element={
+              <ProtectedRoute>
+                <RewardProvider>
+                  <ThemeManager />
+                  <AnimationManager>
+                    <Layout>
+                      <LootBoxesPage />
+                    </Layout>
+                  </AnimationManager>
+                </RewardProvider>
               </ProtectedRoute>
             }
           />

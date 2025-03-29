@@ -14,6 +14,8 @@ import {
   ListTodo,
 } from "lucide-react";
 import GlitchPopup from "./GlitchPopup";
+import KeyEarnedNotification from "./KeyEarnedNotification";
+import { useAnimation } from "./AnimationManager";
 
 const TodoItem = ({
   todo,
@@ -26,7 +28,7 @@ const TodoItem = ({
   onDrop,
   isSelected = false,
   isSpinning = false,
-  forceGlitch = false, // Add new prop for testing
+  forceGlitch = false,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(todo.title);
@@ -42,8 +44,11 @@ const TodoItem = ({
   const [isInteracting, setIsInteracting] = useState(false);
   const [isGlitched, setIsGlitched] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
+  const [showKeyNotification, setShowKeyNotification] = useState(false); // Add state for key notification
   const interactionTimerRef = useRef(null);
   const interactionStartTimeRef = useRef(null);
+
+  const { todoAnimation } = useAnimation();
 
   useEffect(() => {
     if (isInteracting && !isGlitched && !isEditing) {
@@ -150,6 +155,13 @@ const TodoItem = ({
       );
 
       setCompleted(newCompletedStatus);
+
+      // Check if a key was awarded
+      if (response.data.keyAwarded) {
+        setShowKeyNotification(true);
+        setTimeout(() => setShowKeyNotification(false), 3000);
+      }
+
       onUpdateTodo(response.data.data);
     } catch (error) {
       console.error("Failed to update todo status:", error);
@@ -236,6 +248,12 @@ const TodoItem = ({
   return (
     <>
       {showPopup && <GlitchPopup onClick={handleFixGlitch} />}
+      {showKeyNotification && (
+        <KeyEarnedNotification
+          show={showKeyNotification}
+          onClose={() => setShowKeyNotification(false)}
+        />
+      )}
       <div
         id={`todo-${todo._id}`}
         draggable={!isEditing}
@@ -250,7 +268,7 @@ const TodoItem = ({
               ? "border-l-2 border-l-accent bg-accent/10 transition-all duration-75"
               : "roulette-final border-l-2 border-l-accent bg-accent/5 transition-all duration-300"
             : ""
-        } ${isGlitched ? "todo-glitched" : ""}`}
+        } ${isGlitched ? "todo-glitched" : ""} ${todoAnimation}`}
       >
         {isEditing ? (
           <form onSubmit={handleUpdate} className="py-2 px-2">
