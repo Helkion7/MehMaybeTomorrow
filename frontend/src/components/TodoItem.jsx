@@ -23,6 +23,8 @@ const TodoItem = ({
   onDragStart,
   onDragOver,
   onDrop,
+  isSelected = false,
+  isSpinning = false,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(todo.title);
@@ -172,11 +174,18 @@ const TodoItem = ({
 
   return (
     <div
+      id={`todo-${todo._id}`}
       draggable={!isEditing}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      className="border-b border-border hover:bg-black/20 transition-colors backdrop-blur-sm relative z-10"
+      className={`border-b border-border hover:bg-black/20 transition-colors backdrop-blur-sm relative z-10 ${
+        isSelected
+          ? isSpinning
+            ? "border-l-2 border-l-accent bg-accent/10 transition-all duration-75"
+            : "roulette-final border-l-2 border-l-accent bg-accent/5 transition-all duration-300"
+          : ""
+      }`}
     >
       {isEditing ? (
         <form onSubmit={handleUpdate} className="py-2 px-2">
@@ -392,7 +401,11 @@ const TodoItem = ({
         </form>
       ) : (
         <div>
-          <div className="flex items-center justify-between w-full px-2 py-1">
+          <div
+            className={`flex items-center justify-between w-full px-2 py-1 ${
+              isSpinning ? "animate-pulse" : ""
+            }`}
+          >
             <div className="flex items-center gap-2 flex-1">
               <div className="cursor-grab flex items-center text-text-secondary">
                 <GripVertical
@@ -409,7 +422,6 @@ const TodoItem = ({
               />
 
               <div className="flex-1 flex items-start">
-                {/* Title on the left, larger size */}
                 <div className="flex items-center min-w-[30%] pr-3">
                   {renderPriorityIndicator(todo.priority || "medium")}
                   <h3
@@ -429,14 +441,12 @@ const TodoItem = ({
                   )}
                 </div>
 
-                {/* Description in the middle */}
                 {todo.description && todo.description.trim() !== "" && (
                   <p className="text-xs text-text-secondary font-extralight flex-1 px-2">
                     {todo.description}
                   </p>
                 )}
 
-                {/* Tags on the right */}
                 {todo.tags && todo.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 ml-auto">
                     {todo.tags.map((tag) => (

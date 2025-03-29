@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
@@ -10,9 +10,13 @@ import {
   Calendar,
   ChevronDown,
   Flag,
+  Shuffle,
 } from "lucide-react";
 import TodoItem from "../components/TodoItem";
 import CreateTodo from "../components/CreateTodo";
+
+// Single sound URL - replace with path to your 10-second audio file
+const ROULETTE_SOUND_URL = "/sounds/roulette.mp3";
 
 const TodoPage = () => {
   const [todos, setTodos] = useState([]);
@@ -26,12 +30,23 @@ const TodoPage = () => {
   const [draggedItemIndex, setDraggedItemIndex] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState("date"); // Options: date, priority
+  const [randomTodoId, setRandomTodoId] = useState(null);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [spinningIndex, setSpinningIndex] = useState(null);
+  const [screenEffect, setScreenEffect] = useState(false);
+  const [spinIntensity, setSpinIntensity] = useState(0);
+  const audioRef = useRef(null);
   const navigate = useNavigate();
 
   // Fetch todos when component mounts or when filters change
   useEffect(() => {
     fetchTodos();
   }, [selectedDate, selectedTag]);
+
+  // Reset random todo selection when filters change
+  useEffect(() => {
+    setRandomTodoId(null);
+  }, [selectedDate, selectedTag, selectedPriority, searchTerm, sortBy]);
 
   // Fetch available tags
   useEffect(() => {
@@ -169,6 +184,137 @@ const TodoPage = () => {
     setDraggedItemIndex(null);
   };
 
+  // Function to simulate a "wheel of fortune" effect with enhanced visuals and sound
+  const selectRandomTodo = () => {
+    if (filteredAndSortedTodos.length === 0) {
+      return;
+    }
+
+    // Reset the current selection and start spinning
+    setRandomTodoId(null);
+    setIsSpinning(true);
+    setScreenEffect(true);
+    setSpinIntensity(0);
+
+    // Play roulette sound
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.volume = 1.0;
+      audioRef.current
+        .play()
+        .catch((e) => console.log("Audio playback prevented by browser"));
+    }
+
+    // Pick the final result in advance
+    const finalIndex = Math.floor(
+      Math.random() * filteredAndSortedTodos.length
+    );
+    const selectedTodo = filteredAndSortedTodos[finalIndex];
+
+    // Set animation duration to match the 10-second audio track
+    const totalDuration = 10000; // 10 seconds in milliseconds
+    const initialDelay = 50; // Faster at the beginning
+    const endDelay = 350; // Slower at the end
+
+    // Create the animation sequence
+    let currentSpin = 0;
+    let startTime = Date.now();
+    let endAnimationTimeoutId = null;
+
+    // Schedule the final selection to happen right at the end of the animation
+    const endAnimation = () => {
+      // Final selection
+      setSpinningIndex(finalIndex); // Briefly highlight the final selection
+
+      setTimeout(() => {
+        setSpinningIndex(null);
+        setRandomTodoId(selectedTodo._id);
+        setIsSpinning(false);
+
+        // Reset screen effects
+        setScreenEffect(false);
+        document.documentElement.style.transform = "none";
+
+        // Scroll to the selected todo
+        setTimeout(() => {
+          const todoElement = document.getElementById(
+            `todo-${selectedTodo._id}`
+          );
+          if (todoElement) {
+            todoElement.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 200);
+      }, 300);
+    };
+
+    // Schedule the end animation to occur at exactly the right time
+    endAnimationTimeoutId = setTimeout(endAnimation, totalDuration - 300);
+
+    const spinTheWheel = () => {
+      const elapsedTime = Date.now() - startTime;
+
+      // If we've reached the end of the animation, stop here
+      if (elapsedTime >= totalDuration - 400) {
+        return;
+      }
+
+      // Calculate progress (0 to 1)
+      const progress = Math.min(0.99, elapsedTime / totalDuration);
+
+      // Calculate delay with easing (starts fast, slows down more dramatically)
+      const easedProgress = progress * progress; // Quadratic easing for smoother progression
+      const currentDelay =
+        initialDelay + easedProgress * (endDelay - initialDelay);
+
+      // Update screen effect intensity - increases as we approach the end
+      setSpinIntensity(Math.min(1, progress * 1.5));
+
+      // Select a random index to highlight (avoid the same index twice in a row)
+      let randomIndex;
+      do {
+        randomIndex = Math.floor(Math.random() * filteredAndSortedTodos.length);
+      } while (
+        randomIndex === spinningIndex &&
+        filteredAndSortedTodos.length > 1
+      );
+
+      // Update the highlighted item
+      setSpinningIndex(randomIndex);
+
+      // Add small screen shake that increases with intensity
+      if (currentSpin > 5) {
+        document.documentElement.style.transform = `translate(${
+          (Math.random() * 4 - 2) * spinIntensity
+        }px, ${(Math.random() * 4 - 2) * spinIntensity}px)`;
+      }
+
+      currentSpin++;
+
+      // Always continue the animation until we're near the end of the duration
+      setTimeout(spinTheWheel, currentDelay);
+    };
+
+    // Start the animation sequence
+    setTimeout(spinTheWheel, 100);
+
+    // Clean up function in case component unmounts during animation
+    return () => {
+      if (endAnimationTimeoutId) {
+        clearTimeout(endAnimationTimeoutId);
+      }
+    };
+  };
+
+  // Clean up audio on component unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+    };
+  }, []);
+
   // Filter and sort todos based on search term, priority, etc.
   const filteredAndSortedTodos = todos
     .filter((todo) => {
@@ -225,212 +371,259 @@ const TodoPage = () => {
   };
 
   return (
-    <div className="py-2 px-1">
-      <div className="mb-4">
-        <h1 className="text-xl font-extralight text-text-primary tracking-tight">
-          Todo List
-        </h1>
-        <p className="text-sm text-text-secondary">Minimalism in motion</p>
-      </div>
+    <>
+      {/* Single audio element */}
+      <audio
+        ref={audioRef}
+        src={ROULETTE_SOUND_URL}
+        preload="auto"
+        loop={false}
+      ></audio>
 
-      {/* Search bar */}
-      <div className="mb-4 focus-within:ring-1 focus-within:ring-accent transition-all">
-        <div className="flex items-center border-b border-border">
-          <Search
-            size={16}
-            strokeWidth={1}
-            className="text-text-secondary opacity-70"
-          />
-          <input
-            type="text"
-            placeholder="Search"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-transparent text-text-primary focus:outline-none py-1 px-2 text-sm font-extralight"
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm("")}
-              className="text-text-secondary"
-            >
-              <X size={14} strokeWidth={1} />
-            </button>
-          )}
+      {/* Screen effect overlay */}
+      {screenEffect && (
+        <div
+          className="fixed inset-0 pointer-events-none z-30 bg-gradient-to-r from-accent/5 to-transparent"
+          style={{
+            animation: "pulse-overlay 0.6s ease-in-out infinite alternate",
+            opacity: spinIntensity * 0.35,
+          }}
+        ></div>
+      )}
+
+      <div
+        className={`py-2 px-1 transition-all duration-300 ${
+          screenEffect ? "roulette-active" : ""
+        }`}
+      >
+        <div className="mb-4">
+          <h1 className="text-xl font-extralight text-text-primary tracking-tight">
+            Todo List
+          </h1>
+          <p className="text-sm text-text-secondary">Minimalism in motion</p>
         </div>
-      </div>
 
-      <div className="mb-4">
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-1 text-text-secondary hover:text-accent transition-colors text-sm"
-        >
-          <Filter size={14} strokeWidth={1} className="opacity-70" />
-          <span>Filters</span>
-          <ChevronDown
-            size={14}
-            strokeWidth={1}
-            className={`opacity-70 transform transition-transform ${
-              showFilters ? "rotate-180" : ""
-            }`}
-          />
-        </button>
-
-        {showFilters && (
-          <div className="mt-2 space-y-2 border-l border-border pl-2">
-            <button
-              onClick={handleTodayTodos}
-              className="text-text-secondary hover:text-accent transition-colors text-xs flex items-center gap-1"
-            >
-              <Calendar size={12} strokeWidth={1} className="opacity-70" />
-              Today
-            </button>
-
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="dateFilter"
-                className="text-xs text-text-secondary"
-              >
-                Date:
-              </label>
-              <input
-                id="dateFilter"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="tagFilter"
-                className="text-xs text-text-secondary"
-              >
-                Tag:
-              </label>
-              <select
-                id="tagFilter"
-                value={selectedTag}
-                onChange={(e) => setSelectedTag(e.target.value)}
-                className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
-              >
-                <option value="">All Tags</option>
-                {availableTags.map((tag) => (
-                  <option key={tag} value={tag}>
-                    {tag}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="priorityFilter"
-                className="text-xs text-text-secondary flex items-center gap-1"
-              >
-                <Flag size={12} strokeWidth={1} className="opacity-70" />
-                Priority:
-              </label>
-              <select
-                id="priorityFilter"
-                value={selectedPriority}
-                onChange={(e) => setSelectedPriority(e.target.value)}
-                className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
-              >
-                <option value="">All Priorities</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label htmlFor="sortBy" className="text-xs text-text-secondary">
-                Sort by:
-              </label>
-              <select
-                id="sortBy"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
-              >
-                <option value="date">Date</option>
-                <option value="priority">Priority</option>
-              </select>
-            </div>
-
-            {(selectedDate || selectedTag || selectedPriority) && (
+        {/* Search bar */}
+        <div className="mb-4 focus-within:ring-1 focus-within:ring-accent transition-all">
+          <div className="flex items-center border-b border-border">
+            <Search
+              size={16}
+              strokeWidth={1}
+              className="text-text-secondary opacity-70"
+            />
+            <input
+              type="text"
+              placeholder="Search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-transparent text-text-primary focus:outline-none py-1 px-2 text-sm font-extralight"
+            />
+            {searchTerm && (
               <button
-                onClick={clearFilters}
+                onClick={() => setSearchTerm("")}
+                className="text-text-secondary"
+              >
+                <X size={14} strokeWidth={1} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-1 text-text-secondary hover:text-accent transition-colors text-sm"
+          >
+            <Filter size={14} strokeWidth={1} className="opacity-70" />
+            <span>Filters</span>
+            <ChevronDown
+              size={14}
+              strokeWidth={1}
+              className={`opacity-70 transform transition-transform ${
+                showFilters ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {showFilters && (
+            <div className="mt-2 space-y-2 border-l border-border pl-2">
+              <button
+                onClick={handleTodayTodos}
                 className="text-text-secondary hover:text-accent transition-colors text-xs flex items-center gap-1"
               >
-                <X size={12} strokeWidth={1} />
-                Clear Filters
+                <Calendar size={12} strokeWidth={1} className="opacity-70" />
+                Today
               </button>
+
+              <div className="flex items-center gap-2">
+                <label
+                  htmlFor="dateFilter"
+                  className="text-xs text-text-secondary"
+                >
+                  Date:
+                </label>
+                <input
+                  id="dateFilter"
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label
+                  htmlFor="tagFilter"
+                  className="text-xs text-text-secondary"
+                >
+                  Tag:
+                </label>
+                <select
+                  id="tagFilter"
+                  value={selectedTag}
+                  onChange={(e) => setSelectedTag(e.target.value)}
+                  className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
+                >
+                  <option value="">All Tags</option>
+                  {availableTags.map((tag) => (
+                    <option key={tag} value={tag}>
+                      {tag}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label
+                  htmlFor="priorityFilter"
+                  className="text-xs text-text-secondary flex items-center gap-1"
+                >
+                  <Flag size={12} strokeWidth={1} className="opacity-70" />
+                  Priority:
+                </label>
+                <select
+                  id="priorityFilter"
+                  value={selectedPriority}
+                  onChange={(e) => setSelectedPriority(e.target.value)}
+                  className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
+                >
+                  <option value="">All Priorities</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label htmlFor="sortBy" className="text-xs text-text-secondary">
+                  Sort by:
+                </label>
+                <select
+                  id="sortBy"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="bg-transparent text-text-primary border-b border-border focus:outline-none focus:border-accent text-xs py-0 px-1"
+                >
+                  <option value="date">Date</option>
+                  <option value="priority">Priority</option>
+                </select>
+              </div>
+
+              {(selectedDate || selectedTag || selectedPriority) && (
+                <button
+                  onClick={clearFilters}
+                  className="text-text-secondary hover:text-accent transition-colors text-xs flex items-center gap-1"
+                >
+                  <X size={12} strokeWidth={1} />
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-4 mb-4">
+          <button
+            onClick={() => setShowCreateForm(!showCreateForm)}
+            className="text-text-secondary hover:text-accent transition-colors text-sm flex items-center gap-1"
+          >
+            <PlusCircle size={14} strokeWidth={1} className="opacity-70" />
+            {showCreateForm ? "Cancel" : "New Task"}
+          </button>
+
+          <button
+            onClick={selectRandomTodo}
+            disabled={filteredAndSortedTodos.length === 0 || isSpinning}
+            title="Randomly select a task to work on next"
+            className={`text-text-secondary hover:text-accent transition-colors text-sm flex items-center gap-1 ${
+              isSpinning ? "animate-pulse text-accent" : ""
+            }`}
+          >
+            <Shuffle
+              size={14}
+              strokeWidth={1}
+              className={isSpinning ? "animate-spin" : "opacity-70"}
+            />
+            {isSpinning ? "Spinning..." : "Task Roulette"}
+          </button>
+        </div>
+
+        {showCreateForm && (
+          <CreateTodo onAddTodo={handleAddTodo} availableTags={availableTags} />
+        )}
+
+        {selectedPriority && (
+          <div className="mb-4 flex items-center gap-2">
+            <span className="text-xs text-text-secondary">
+              Filtered by priority:
+            </span>
+            {renderPriorityBadge(selectedPriority)}
+            <button
+              onClick={() => setSelectedPriority("")}
+              className="text-text-secondary hover:text-accent"
+            >
+              <X size={12} strokeWidth={1} />
+            </button>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="py-4 flex justify-center">
+            <p className="text-sm text-text-secondary">Loading...</p>
+          </div>
+        ) : filteredAndSortedTodos.length > 0 ? (
+          <div className="space-y-0">
+            {filteredAndSortedTodos.map((todo, index) => (
+              <TodoItem
+                key={todo._id}
+                todo={todo}
+                index={index}
+                isSelected={
+                  todo._id === randomTodoId || index === spinningIndex
+                }
+                isSpinning={index === spinningIndex}
+                onUpdateTodo={handleUpdateTodo}
+                onDeleteTodo={handleDeleteTodo}
+                availableTags={availableTags}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="py-6 flex flex-col items-center">
+            {searchTerm || selectedPriority ? (
+              <p className="text-sm text-text-secondary">
+                No matching tasks found
+              </p>
+            ) : (
+              <p className="text-sm text-text-secondary">No tasks yet</p>
             )}
           </div>
         )}
       </div>
-
-      <button
-        onClick={() => setShowCreateForm(!showCreateForm)}
-        className="text-text-secondary hover:text-accent transition-colors text-sm flex items-center gap-1 mb-4"
-      >
-        <PlusCircle size={14} strokeWidth={1} className="opacity-70" />
-        {showCreateForm ? "Cancel" : "New Task"}
-      </button>
-
-      {showCreateForm && (
-        <CreateTodo onAddTodo={handleAddTodo} availableTags={availableTags} />
-      )}
-
-      {selectedPriority && (
-        <div className="mb-4 flex items-center gap-2">
-          <span className="text-xs text-text-secondary">
-            Filtered by priority:
-          </span>
-          {renderPriorityBadge(selectedPriority)}
-          <button
-            onClick={() => setSelectedPriority("")}
-            className="text-text-secondary hover:text-accent"
-          >
-            <X size={12} strokeWidth={1} />
-          </button>
-        </div>
-      )}
-
-      {isLoading ? (
-        <div className="py-4 flex justify-center">
-          <p className="text-sm text-text-secondary">Loading...</p>
-        </div>
-      ) : filteredAndSortedTodos.length > 0 ? (
-        <div className="space-y-0">
-          {filteredAndSortedTodos.map((todo, index) => (
-            <TodoItem
-              key={todo._id}
-              todo={todo}
-              index={index}
-              onUpdateTodo={handleUpdateTodo}
-              onDeleteTodo={handleDeleteTodo}
-              availableTags={availableTags}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="py-6 flex flex-col items-center">
-          {searchTerm || selectedPriority ? (
-            <p className="text-sm text-text-secondary">
-              No matching tasks found
-            </p>
-          ) : (
-            <p className="text-sm text-text-secondary">No tasks yet</p>
-          )}
-        </div>
-      )}
-    </div>
+    </>
   );
 };
 
