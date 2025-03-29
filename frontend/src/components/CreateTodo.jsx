@@ -54,9 +54,12 @@ const CreateTodo = ({ onAddTodo, availableTags = [] }) => {
     setError("");
 
     try {
+      // Clean subtasks by removing client-side _id before sending to server
+      const cleanedSubtasks = subtasks.map(({ _id, ...rest }) => rest);
+
       const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/todos`,
-        { title, description, tags, priority, subtasks },
+        { title, description, tags, priority, subtasks: cleanedSubtasks },
         { withCredentials: true }
       );
 

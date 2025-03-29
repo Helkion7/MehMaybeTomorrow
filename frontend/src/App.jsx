@@ -8,6 +8,7 @@ import {
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import TodoPage from "./pages/TodoPage";
+import FinishedPage from "./pages/FinishedPage"; // Import the new page
 import ProfilePage from "./pages/ProfilePage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
@@ -25,6 +26,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <TodoPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/finished"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <FinishedPage />
                 </Layout>
               </ProtectedRoute>
             }

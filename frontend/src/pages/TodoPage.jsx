@@ -131,9 +131,16 @@ const TodoPage = () => {
   };
 
   const handleUpdateTodo = (updatedTodo) => {
-    setTodos(
-      todos.map((todo) => (todo._id === updatedTodo._id ? updatedTodo : todo))
-    );
+    // Handle when a task is marked as completed
+    if (updatedTodo.completed) {
+      // Remove from active todos list (it will move to finished tasks)
+      setTodos(todos.filter((todo) => todo._id !== updatedTodo._id));
+    } else {
+      // Update as usual
+      setTodos(
+        todos.map((todo) => (todo._id === updatedTodo._id ? updatedTodo : todo))
+      );
+    }
     // Refresh tags if tags were updated
     fetchTags();
   };
@@ -339,6 +346,9 @@ const TodoPage = () => {
   // Filter and sort todos based on search term, priority, etc.
   const filteredAndSortedTodos = todos
     .filter((todo) => {
+      // Only include non-completed tasks
+      if (todo.completed) return false;
+
       // Filter by search term
       const matchesSearch =
         searchTerm.trim() === ""

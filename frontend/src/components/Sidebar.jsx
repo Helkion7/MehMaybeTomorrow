@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
-import { UserCircle, LogOut, CheckSquare } from "lucide-react";
+import { UserCircle, LogOut, CheckSquare, CheckCircle } from "lucide-react";
 
 const Sidebar = () => {
   const navigate = useNavigate();
@@ -42,7 +42,18 @@ const Sidebar = () => {
               )}`}
             >
               <CheckSquare size={18} strokeWidth={1} className="opacity-80" />
-              <span className="text-sm">Todos</span>
+              <span className="text-sm">Tasks</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/finished"
+              className={`flex items-center gap-2 px-4 py-2 text-text-secondary hover:text-accent transition-colors border-l-2 ${isActive(
+                "/finished"
+              )}`}
+            >
+              <CheckCircle size={18} strokeWidth={1} className="opacity-80" />
+              <span className="text-sm">Finished</span>
             </Link>
           </li>
           <li>

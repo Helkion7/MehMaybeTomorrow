@@ -46,38 +46,60 @@ app.use(cookieParser());
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/todos", todoRoutes); // This should mount the /tags endpoint
+app.use("/api/todos", todoRoutes);
 app.use("/api/users", userRoutes);
 
-// Debug route to check available routes
-app.get("/routes", (req, res) => {
+// Enhanced debug route to check available routes
+app.get("/debug/routes", (req, res) => {
   const routes = [];
-  app._router.stack.forEach((middleware) => {
-    if (middleware.route) {
-      // Routes registered directly on the app
-      routes.push({
-        path: middleware.route.path,
-        methods: Object.keys(middleware.route.methods),
-      });
-    } else if (middleware.name === "router") {
-      // Router middleware
-      middleware.handle.stack.forEach((handler) => {
-        if (handler.route) {
-          routes.push({
-            path: handler.route.path,
-            methods: Object.keys(handler.route.methods),
-          });
-        }
-      });
-    }
+
+  // Function to extract routes from a router stack
+  const extractRoutes = (stack, prefix = "") => {
+    stack.forEach((layer) => {
+      if (layer.route) {
+        // Routes registered directly
+        const path = prefix + layer.route.path;
+        const methods = Object.keys(layer.route.methods).map((m) =>
+          m.toUpperCase()
+        );
+        routes.push({ path, methods });
+      } else if (layer.name === "router" && layer.handle.stack) {
+        // Router middleware
+        const routerPath = layer.regexp.toString().match(/^\/\^\\(\/?[^\\]+)/);
+        const pathPrefix = routerPath
+          ? prefix + routerPath[1].replace(/\\\//g, "/")
+          : prefix;
+        extractRoutes(layer.handle.stack, pathPrefix);
+      }
+    });
+  };
+
+  extractRoutes(app._router.stack);
+
+  res.json({
+    routes: routes.sort((a, b) => a.path.localeCompare(b.path)),
+    todoRoutesExported: Object.keys(todoRoutes),
+    todoControllerMethods: Object.keys(require("./controllers/todoController")),
   });
-  res.json(routes);
 });
 
 app.get("/", (req, res) => {
   res.send(`Server running on port ${process.env.PORT}`);
 });
 
-app.listen(process.env.PORT, () => {
-  console.log(`Server running on port ${process.env.PORT}`);
+// Handle 404s with useful information
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Not Found",
+    message: `The endpoint ${req.method} ${req.path} does not exist`,
+    availableEndpoints: "GET /debug/routes to see all available endpoints",
+  });
+});
+
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(
+    `Debug routes available at: http://localhost:${PORT}/debug/routes`
+  );
 });

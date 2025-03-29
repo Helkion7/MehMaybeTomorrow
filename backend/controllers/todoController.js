@@ -113,6 +113,53 @@ const getTodayTodos = async (req, res) => {
   }
 };
 
+// Get finished (completed) todos for current user
+const getFinishedTodos = async (req, res) => {
+  try {
+    const { date, tag } = req.query;
+
+    // Build filters - always include completed: true
+    let filters = {
+      user: req.user.userId,
+      completed: true,
+    };
+
+    if (date) {
+      // Create date range for the specific day
+      const startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
+
+      const endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+
+      filters.createdAt = {
+        $gte: startDate,
+        $lte: endDate,
+      };
+    }
+
+    // Add tag filter if provided
+    if (tag) {
+      filters.tags = tag;
+    }
+
+    // Get completed todos for the logged-in user with filters
+    const todos = await Todo.find(filters).sort({ updatedAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: todos.length,
+      data: todos,
+    });
+  } catch (error) {
+    console.error("Get finished todos error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching finished todos",
+    });
+  }
+};
+
 // Update a todo
 const updateTodo = async (req, res) => {
   try {
@@ -324,6 +371,7 @@ module.exports = {
   createTodo,
   getTodos,
   getTodayTodos,
+  getFinishedTodos, // Verify this is properly exported
   updateTodo,
   updateSubtask,
   deleteSubtask,
