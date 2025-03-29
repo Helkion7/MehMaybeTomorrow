@@ -11,6 +11,7 @@ import {
   ChevronDown,
   Flag,
   Shuffle,
+  ZapOff,
 } from "lucide-react";
 import TodoItem from "../components/TodoItem";
 import CreateTodo from "../components/CreateTodo";
@@ -35,6 +36,7 @@ const TodoPage = () => {
   const [spinningIndex, setSpinningIndex] = useState(null);
   const [screenEffect, setScreenEffect] = useState(false);
   const [spinIntensity, setSpinIntensity] = useState(0);
+  const [glitchTestTodoId, setGlitchTestTodoId] = useState(null);
   const audioRef = useRef(null);
   const navigate = useNavigate();
 
@@ -303,6 +305,25 @@ const TodoPage = () => {
         clearTimeout(endAnimationTimeoutId);
       }
     };
+  };
+
+  // Add a new function to test the glitch feature
+  const testGlitchFeature = () => {
+    if (filteredAndSortedTodos.length === 0) return;
+
+    // Select a random todo from the filtered list
+    const randomIndex = Math.floor(
+      Math.random() * filteredAndSortedTodos.length
+    );
+    const selectedTodo = filteredAndSortedTodos[randomIndex];
+
+    // Set the ID of the todo to glitch
+    setGlitchTestTodoId(selectedTodo._id);
+
+    // Reset the glitch test after a short delay (to allow for re-testing)
+    setTimeout(() => {
+      setGlitchTestTodoId(null);
+    }, 100);
   };
 
   // Clean up audio on component unmount
@@ -608,6 +629,7 @@ const TodoPage = () => {
                 onDragStart={handleDragStart}
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
+                forceGlitch={todo._id === glitchTestTodoId}
               />
             ))}
           </div>
@@ -623,6 +645,16 @@ const TodoPage = () => {
           </div>
         )}
       </div>
+
+      {/* Add test button in lower right corner */}
+      <button
+        onClick={testGlitchFeature}
+        className="fixed bottom-4 right-4 text-text-secondary hover:text-accent border border-border hover:border-accent transition-colors py-1 px-2 text-xs font-extralight bg-black/50 backdrop-blur-sm z-50 flex items-center gap-1"
+        title="Test task glitch feature"
+      >
+        <ZapOff size={14} strokeWidth={1} className="opacity-70" />
+        <span>Test Glitch</span>
+      </button>
     </>
   );
 };
