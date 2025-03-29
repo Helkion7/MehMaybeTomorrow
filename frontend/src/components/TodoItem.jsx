@@ -48,10 +48,14 @@ const TodoItem = ({
   useEffect(() => {
     if (isInteracting && !isGlitched && !isEditing) {
       interactionStartTimeRef.current = Date.now();
+      console.log("Started interaction timer"); // Add debug log back
 
       interactionTimerRef.current = setInterval(() => {
         const timeSpent = Date.now() - interactionStartTimeRef.current;
+        console.log(`Time spent interacting: ${timeSpent}ms`); // Add debug log back
+
         if (timeSpent > 30000) {
+          console.log("Triggering glitch effect"); // Add debug log back
           setIsGlitched(true);
           setShowPopup(true);
           clearInterval(interactionTimerRef.current);
@@ -75,11 +79,13 @@ const TodoItem = ({
 
   const handleMouseEnter = () => {
     if (!isEditing && !isGlitched) {
+      console.log("Mouse enter - setting isInteracting to true"); // Add debug log back
       setIsInteracting(true);
     }
   };
 
   const handleMouseLeave = () => {
+    console.log("Mouse leave - setting isInteracting to false"); // Add debug log back
     setIsInteracting(false);
     if (interactionTimerRef.current) {
       clearInterval(interactionTimerRef.current);
