@@ -9,5 +9,9 @@
     "helmet": "^6.2.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.8.6"
+  },
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
   }
 }
